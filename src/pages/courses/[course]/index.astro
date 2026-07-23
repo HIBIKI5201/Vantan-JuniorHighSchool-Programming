@@ -17,17 +17,21 @@ const baseUrl = import.meta.env.BASE_URL;
 	<h1>{course.data.title}</h1>
 	<p class="course-meta">{course.data.dayOfWeek} ・ {course.data.period}</p>
 	{course.data.note && <aside>💡<p>{course.data.note}</p></aside>}
-	<ol class="lesson-list">
-		{lessons.map((lesson) => {
-			const lessonSlug = lesson.slug.split("/").slice(1).join("/");
-			return (
-				<li>
-					<a href={`${baseUrl}courses/${course.slug}/${lessonSlug}/`}>{lesson.data.title}</a>
-					{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
-				</li>
-			);
-		})}
-	</ol>
+	{lessons.length === 0 ? (
+		<p class="empty-state">まだ授業回のページがありません。準備が整い次第、追加します。</p>
+	) : (
+		<ol class="lesson-list">
+			{lessons.map((lesson) => {
+				const lessonSlug = lesson.slug.split("/").slice(1).join("/");
+				return (
+					<li>
+						<a href={`${baseUrl}courses/${course.slug}/${lessonSlug}/`}>{lesson.data.title}</a>
+						{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
+					</li>
+				);
+			})}
+		</ol>
+	)}
 </Layout>
 <style>
 	.course-meta {
