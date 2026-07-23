@@ -350,7 +350,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		margin: 0.65rem 0;
 	}
 
-	aside p:first-child {
+	aside p.aside-icon {
 		position: absolute;
 		top: -1rem;
 		left: 1.1rem;
@@ -367,7 +367,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		border: 1px solid var(--color-callout-border);
 	}
 
-	aside p:nth-child(2) {
+	aside p.aside-icon + p {
 		margin-top: 0.6rem;
 	}
 
@@ -398,11 +398,11 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 
 	/* ---------- 見本プロジェクト・フォームなど、単独リンクの段落をボタン風にする ---------- */
 
-	article p:has(> a:only-child) {
+	article p:has(> a:only-child):where(:not(:has(> a[href*="/courses/"]))) {
 		margin: 1.4rem 0;
 	}
 
-	article p:has(> a:only-child) > a {
+	article p:has(> a:only-child):where(:not(:has(> a[href*="/courses/"]))) > a {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
@@ -417,13 +417,13 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		word-break: break-all;
 	}
 
-	article p:has(> a:only-child) > a:hover {
+	article p:has(> a:only-child):where(:not(:has(> a[href*="/courses/"]))) > a:hover {
 		transform: translateY(-1px);
 		box-shadow: var(--shadow-md);
 		border-color: var(--color-accent);
 	}
 
-	article p:has(> a:only-child) > a::before {
+	article p:has(> a:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::before {
 		content: "▶";
 		display: inline-flex;
 		align-items: center;
@@ -437,12 +437,12 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		flex-shrink: 0;
 	}
 
-	article p:has(> a[href*="scratch.mit.edu"]:only-child) > a::before {
+	article p:has(> a[href*="scratch.mit.edu"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::before {
 		content: "🐱";
 		font-size: 1rem;
 	}
 
-	article p:has(> a[href*="scratch.mit.edu"]:only-child) > a::after {
+	article p:has(> a[href*="scratch.mit.edu"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::after {
 		content: "Scratchで見本を開く";
 		margin-left: auto;
 		font-size: 0.72rem;
@@ -451,14 +451,14 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		white-space: nowrap;
 	}
 
-	article p:has(> a[href*="forms.gle"]:only-child) > a::before,
-	article p:has(> a[href*="docs.google.com/forms"]:only-child) > a::before {
+	article p:has(> a[href*="forms.gle"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::before,
+	article p:has(> a[href*="docs.google.com/forms"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::before {
 		content: "📝";
 		font-size: 1rem;
 	}
 
-	article p:has(> a[href*="forms.gle"]:only-child) > a::after,
-	article p:has(> a[href*="docs.google.com/forms"]:only-child) > a::after {
+	article p:has(> a[href*="forms.gle"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::after,
+	article p:has(> a[href*="docs.google.com/forms"]:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::after {
 		content: "フォームに回答する";
 		margin-left: auto;
 		font-size: 0.72rem;
@@ -468,9 +468,36 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	}
 
 	@media (max-width: 480px) {
-		article p:has(> a:only-child) > a::after {
+		article p:has(> a:only-child):where(:not(:has(> a[href*="/courses/"]))) > a::after {
 			display: none;
 		}
+	}
+
+	/* ---------- Scratch wikiの用語ページへのリンク(文中に埋め込まれる、独立した段落ではない) ---------- */
+
+	article a[href*="/courses/scratch-wiki/"] {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		background: var(--color-accent-soft);
+		color: var(--color-accent-ink);
+		padding: 0.1rem 0.65rem 0.1rem 0.5rem;
+		border-radius: 999px;
+		font-weight: 700;
+		text-decoration: none;
+		font-size: 0.92em;
+		vertical-align: middle;
+		transition: background 0.15s ease, color 0.15s ease;
+	}
+
+	article a[href*="/courses/scratch-wiki/"]::before {
+		content: "📖";
+		font-size: 0.85em;
+	}
+
+	article a[href*="/courses/scratch-wiki/"]:hover {
+		background: var(--color-accent);
+		color: white;
 	}
 
 	/* ---------- 汎用ユーティリティ ---------- */

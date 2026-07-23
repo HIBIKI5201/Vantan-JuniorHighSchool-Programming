@@ -83,6 +83,18 @@ const COURSES = [
   },
 ];
 
+// Scratch wikiの各用語ページのファイル名 → 表示順。
+// 他コースの本文中にある「変数とは：[変数](../Scratch wiki/変数 xxxx.md)」のようなリンクを
+// 実際のサイト内リンク(/courses/scratch-wiki/<NN>/)に付け替えるために使う。
+const SCRATCH_WIKI_LESSONS = [
+  { file: "変数 3594374a1f76801e934ed0b504684459.md", order: 0, title: "変数" },
+  { file: "条件 34c4374a1f7680e3bf36cc3b605067e4.md", order: 1, title: "条件" },
+  { file: "初期化（しょきか） 2fe4374a1f7680de892fc2ca236095fd.md", order: 2, title: "初期化（しょきか）" },
+  { file: "メッセージ 2fe4374a1f768078a60ecd253643decf.md", order: 3, title: "メッセージ" },
+  { file: "インゲーム・アウトゲーム 3454374a1f76808bbb4cc392fdbd372b.md", order: 4, title: "インゲーム・アウトゲーム" },
+];
+const scratchWikiOrderByFilename = new Map(SCRATCH_WIKI_LESSONS.map((l) => [l.file, l.order]));
+
 function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
@@ -126,7 +138,20 @@ function processLesson({ courseDir, filename, order, title, courseSlug, fileDirO
     return `*[画像が見つかりません: ${originalFilename}（元のNotionエクスポートに含まれていませんでした）]*`;
   });
 
-  content = content.replace(/\[([^\]]+)\]\([^)]*\.md[^)]*\)/g, "$1");
+  // Scratch wikiの用語ページへのリンクは、実際のサイト内リンクに付け替える。
+  // それ以外の(サイトでは辿れない)内部ページへのリンクは、リンクを外してテキストだけ残す。
+  content = content.replace(/\[([^\]]+)\]\(([^)]*\.md[^)]*)\)/g, (m, linkText, url) => {
+    const decoded = decodeURIComponent(url);
+    if (decoded.includes("Scratch wiki/")) {
+      const wikiFilename = decoded.split("Scratch wiki/")[1];
+      const order = scratchWikiOrderByFilename.get(wikiFilename);
+      if (order !== undefined) {
+        const paddedWikiOrder = String(order).padStart(2, "0");
+        return `[${linkText}](/courses/scratch-wiki/${paddedWikiOrder}/)`;
+      }
+    }
+    return linkText;
+  });
 
   const frontmatter = `---\ncourse: ${yamlString(courseSlug)}\norder: ${order}\ntitle: ${yamlString(title)}\nstatus: complete\n---\n\n`;
 
@@ -194,18 +219,11 @@ if (fs.existsSync(taikenCourseDir)) {
   console.warn("スキップ: 体験授業 が _notion-source/ に見つかりません");
 }
 
-// --- Scratch wiki: "#N" 形式ではない用語集。ファイルとタイトルを手動で対応付ける ---
+// --- Scratch wiki: "#N" 形式ではない用語集。ファイルとタイトルの対応は SCRATCH_WIKI_LESSONS(上部)を使う ---
 const scratchWikiDir = path.join(SRC_ROOT, "Scratch wiki");
-const scratchWikiLessons = [
-  { file: "変数 3594374a1f76801e934ed0b504684459.md", order: 0, title: "変数" },
-  { file: "条件 34c4374a1f7680e3bf36cc3b605067e4.md", order: 1, title: "条件" },
-  { file: "初期化（しょきか） 2fe4374a1f7680de892fc2ca236095fd.md", order: 2, title: "初期化（しょきか）" },
-  { file: "メッセージ 2fe4374a1f768078a60ecd253643decf.md", order: 3, title: "メッセージ" },
-  { file: "インゲーム・アウトゲーム 3454374a1f76808bbb4cc392fdbd372b.md", order: 4, title: "インゲーム・アウトゲーム" },
-];
 if (fs.existsSync(scratchWikiDir)) {
-  console.log(`=== Scratch wiki (${scratchWikiLessons.length} lessons) ===`);
-  for (const l of scratchWikiLessons) {
+  console.log(`=== Scratch wiki (${SCRATCH_WIKI_LESSONS.length} lessons) ===`);
+  for (const l of SCRATCH_WIKI_LESSONS) {
     processLesson({ courseDir: scratchWikiDir, filename: l.file, order: l.order, title: l.title, courseSlug: "scratch-wiki" });
   }
   writeCourse({ slug: "scratch-wiki", title: "Scratch wiki", dayOfWeek: "-", period: "リファレンス資料", order: 1 });

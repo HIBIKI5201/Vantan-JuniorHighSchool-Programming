@@ -16,7 +16,7 @@ const baseUrl = import.meta.env.BASE_URL;
 	<p class="back-link"><a href={baseUrl}>← 授業資料一覧</a></p>
 	<h1>{course.data.title}</h1>
 	<p class="course-meta">{course.data.dayOfWeek} ・ {course.data.period}</p>
-	{course.data.note && <aside>💡<p>{course.data.note}</p></aside>}
+	{course.data.note && <aside><p class="aside-icon">💡</p><p>{course.data.note}</p></aside>}
 	{lessons.length === 0 ? (
 		<p class="empty-state">まだ授業回のページがありません。準備が整い次第、追加します。</p>
 	) : (
