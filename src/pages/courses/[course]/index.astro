@@ -1,0 +1,51 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+	const courses = await getCollection("courses");
+	return courses.map((course) => ({ params: { course: course.slug }, props: { course } }));
+}
+
+const { course } = Astro.props;
+const allLessons = await getCollection("lessons", (entry) => entry.data.course === course.slug);
+const lessons = allLessons.sort((a, b) => a.data.order - b.data.order);
+const baseUrl = import.meta.env.BASE_URL;
+---
+<Layout title={`${course.data.title} - バンタン中等部`}>
+	<p><a href={baseUrl}>← 授業資料一覧</a></p>
+	<h1>{course.data.title}</h1>
+	<p class="course-meta">{course.data.dayOfWeek} ・ {course.data.period}</p>
+	{course.data.note && <aside>💡<p>{course.data.note}</p></aside>}
+	<ol class="lesson-list">
+		{lessons.map((lesson) => {
+			const lessonSlug = lesson.slug.split("/").slice(1).join("/");
+			return (
+				<li>
+					<a href={`${baseUrl}courses/${course.slug}/${lessonSlug}/`}>{lesson.data.title}</a>
+					{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
+				</li>
+			);
+		})}
+	</ol>
+</Layout>
+<style>
+	.course-meta {
+		color: #777;
+	}
+	.lesson-list {
+		margin-top: 1.5rem;
+	}
+	.lesson-list li {
+		margin: 0.6rem 0;
+		font-size: 1.05rem;
+	}
+	.badge {
+		margin-left: 0.5rem;
+		font-size: 0.75rem;
+		background: var(--callout-bg);
+		border: 1px solid var(--callout-border);
+		border-radius: 999px;
+		padding: 0.1rem 0.6rem;
+	}
+</style>

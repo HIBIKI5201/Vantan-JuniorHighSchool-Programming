@@ -1,0 +1,62 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { getCollection } from "astro:content";
+
+const courses = (await getCollection("courses")).sort((a, b) => b.data.order - a.data.order);
+const baseUrl = import.meta.env.BASE_URL;
+---
+<Layout>
+	<h1>授業資料一覧</h1>
+	<p>バンタン中等部で行っているプログラミング授業(Scratch)の資料です。コースを選んでください。</p>
+	<div class="course-grid">
+		{courses.map((course) => (
+			<a class="course-card" href={`${baseUrl}courses/${course.slug}/`}>
+				<div class="course-card-title">{course.data.title}</div>
+				<div class="course-card-meta">{course.data.dayOfWeek} ・ {course.data.period}</div>
+				{course.data.status === "partial" && (
+					<div class="course-card-badge">一部準備中</div>
+				)}
+			</a>
+		))}
+	</div>
+</Layout>
+<style>
+	.course-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 1rem;
+		margin-top: 1.5rem;
+	}
+	.course-card {
+		display: block;
+		background: white;
+		border: 1px solid var(--card-border);
+		border-radius: 12px;
+		padding: 1.1rem 1.2rem;
+		text-decoration: none;
+		color: var(--text-color);
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+	}
+	.course-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+	}
+	.course-card-title {
+		font-weight: 700;
+		font-size: 1.1rem;
+	}
+	.course-card-meta {
+		color: #777;
+		font-size: 0.9rem;
+		margin-top: 0.3rem;
+	}
+	.course-card-badge {
+		display: inline-block;
+		margin-top: 0.6rem;
+		background: var(--callout-bg);
+		border: 1px solid var(--callout-border);
+		border-radius: 999px;
+		padding: 0.15rem 0.7rem;
+		font-size: 0.78rem;
+	}
+</style>

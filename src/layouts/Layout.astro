@@ -1,0 +1,153 @@
+---
+const { title = "バンタン中等部 プログラミング授業資料" } = Astro.props;
+let baseUrl = import.meta.env.BASE_URL;
+if (!baseUrl.endsWith("/")) baseUrl += "/";
+---
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href={`${baseUrl}favicon.svg`} />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+	</head>
+	<body>
+		<header class="site-header">
+			<a class="brand" href={baseUrl}>🎮 バンタン中等部 プログラミング授業資料</a>
+		</header>
+		<main>
+			<slot />
+		</main>
+		<footer class="site-footer">
+			<p>バンタン中等部 プログラミング授業</p>
+		</footer>
+	</body>
+</html>
+<style is:global>
+	:root {
+		--accent-color: #5b8def;
+		--bg-color: #fafaf7;
+		--text-color: #262626;
+		--callout-bg: #fff6d8;
+		--callout-border: #f2c94c;
+		--card-border: #e4e4e0;
+	}
+
+	* {
+		box-sizing: border-box;
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	body {
+		margin: 0;
+		font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+		background: var(--bg-color);
+		color: var(--text-color);
+		line-height: 1.8;
+	}
+
+	main {
+		max-width: 820px;
+		margin: 0 auto;
+		padding: 1.5rem 1.25rem 4rem;
+	}
+
+	.site-header {
+		background: white;
+		border-bottom: 1px solid var(--card-border);
+		padding: 0.9rem 1.25rem;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.brand {
+		font-weight: 700;
+		color: var(--text-color);
+		text-decoration: none;
+		font-size: 1.05rem;
+	}
+
+	.site-footer {
+		text-align: center;
+		color: #888;
+		font-size: 0.85rem;
+		padding: 2rem 1rem;
+	}
+
+	h1, h2, h3 {
+		line-height: 1.5;
+	}
+
+	h1 {
+		font-size: 1.7rem;
+		border-bottom: 3px solid var(--accent-color);
+		padding-bottom: 0.4rem;
+	}
+
+	h2 {
+		font-size: 1.35rem;
+		margin-top: 2.5rem;
+		border-left: 6px solid var(--accent-color);
+		padding-left: 0.6rem;
+	}
+
+	h3 {
+		font-size: 1.1rem;
+		margin-top: 2rem;
+	}
+
+	img {
+		max-width: 100%;
+		border-radius: 8px;
+		border: 1px solid var(--card-border);
+		display: block;
+		margin: 1rem 0;
+	}
+
+	a {
+		color: var(--accent-color);
+	}
+
+	ol, ul {
+		padding-left: 1.4rem;
+	}
+
+	li {
+		margin: 0.3rem 0;
+	}
+
+	aside {
+		background: var(--callout-bg);
+		border: 1px solid var(--callout-border);
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		margin: 1.2rem 0;
+	}
+
+	aside p {
+		margin: 0.6rem 0;
+	}
+
+	aside p:first-child {
+		margin-top: 0;
+		font-size: 1.3rem;
+	}
+
+	aside p:last-child {
+		margin-bottom: 0;
+	}
+
+	code {
+		background: #eee;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+</style>

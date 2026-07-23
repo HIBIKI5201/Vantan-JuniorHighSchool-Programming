@@ -1,0 +1,31 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import { getCollection, getEntry, render } from "astro:content";
+
+export async function getStaticPaths() {
+	const lessons = await getCollection("lessons");
+	return Promise.all(
+		lessons.map(async (lesson) => {
+			const [courseSlug, ...rest] = lesson.slug.split("/");
+			const course = await getEntry("courses", courseSlug);
+			return {
+				params: { course: courseSlug, lesson: rest.join("/") },
+				props: { lesson, course },
+			};
+		})
+	);
+}
+
+const { lesson, course } = Astro.props;
+const { Content } = await render(lesson);
+const baseUrl = import.meta.env.BASE_URL;
+---
+<Layout title={`${lesson.data.title} - ${course?.data.title ?? ""}`}>
+	<p><a href={`${baseUrl}courses/${course?.slug}/`}>← {course?.data.title} 一覧</a></p>
+	{lesson.data.status === "partial" && (
+		<aside>💡<p>{lesson.data.note ?? "このページは画像などが準備中です。"}</p></aside>
+	)}
+	<article>
+		<Content />
+	</article>
+</Layout>
