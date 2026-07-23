@@ -171,6 +171,29 @@ for (const c of COURSES) {
   writeCourse(c);
 }
 
+// --- 体験授業: "#N" 形式ではない単発授業。ファイルと表示順を手動で対応付ける ---
+// ルートページ(体験授業.md)だけは_notion-source/直下にあり、他のサブページは
+// _notion-source/体験授業/ フォルダの中にあるので fileDirOverride で読み込み先を分けている。
+const taikenCourseDir = path.join(SRC_ROOT, "体験授業");
+const taikenLessons = [
+  { file: "体験授業 2c84374a1f7680c889afcf92d331db30.md", order: 0, title: "はじめに（自己紹介・進め方）" },
+  { file: "Scratch紹介 3694374a1f7680cbb3ccc71fcb69ad66.md", order: 1, title: "Scratch紹介" },
+  { file: "Scratch操作方法説明 3694374a1f76807d9691ce16b028cb4f.md", order: 2, title: "Scratch操作方法説明" },
+  { file: "1 ブロックの種類 2f94374a1f7680c4a652ca249e498d43.md", order: 3, title: "1. ブロックの種類" },
+  { file: "2 処理 3694374a1f768093b6facb7931a84838.md", order: 4, title: "2. 処理" },
+  { file: "聞いてみたい事 3234374a1f768022a3c0cf9310a5c2df.md", order: 5, title: "聞いてみたい事" },
+];
+if (fs.existsSync(taikenCourseDir)) {
+  console.log(`=== 体験授業 (${taikenLessons.length} lessons) ===`);
+  for (const l of taikenLessons) {
+    const fileDirOverride = l.order === 0 ? SRC_ROOT : undefined;
+    processLesson({ courseDir: taikenCourseDir, filename: l.file, order: l.order, title: l.title, courseSlug: "taiken-jugyo", fileDirOverride });
+  }
+  writeCourse({ slug: "taiken-jugyo", title: "体験授業", dayOfWeek: "単発", period: "体験授業", order: 30 });
+} else {
+  console.warn("スキップ: 体験授業 が _notion-source/ に見つかりません");
+}
+
 // --- Scratch wiki: "#N" 形式ではない用語集。ファイルとタイトルを手動で対応付ける ---
 const scratchWikiDir = path.join(SRC_ROOT, "Scratch wiki");
 const scratchWikiLessons = [

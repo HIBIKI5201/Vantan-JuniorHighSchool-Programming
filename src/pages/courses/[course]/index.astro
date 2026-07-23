@@ -13,7 +13,7 @@ const lessons = allLessons.sort((a, b) => a.data.order - b.data.order);
 const baseUrl = import.meta.env.BASE_URL;
 ---
 <Layout title={`${course.data.title} - バンタン中等部`}>
-	<p><a href={baseUrl}>← 授業資料一覧</a></p>
+	<p class="back-link"><a href={baseUrl}>← 授業資料一覧</a></p>
 	<h1>{course.data.title}</h1>
 	<p class="course-meta">{course.data.dayOfWeek} ・ {course.data.period}</p>
 	{course.data.note && <aside>💡<p>{course.data.note}</p></aside>}
@@ -25,8 +25,12 @@ const baseUrl = import.meta.env.BASE_URL;
 				const lessonSlug = lesson.slug.split("/").slice(1).join("/");
 				return (
 					<li>
-						<a href={`${baseUrl}courses/${course.slug}/${lessonSlug}/`}>{lesson.data.title}</a>
-						{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
+						<a href={`${baseUrl}courses/${course.slug}/${lessonSlug}/`}>
+							<span class="lesson-num">{lesson.data.order}</span>
+							<span class="lesson-title">{lesson.data.title}</span>
+							{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
+							<span class="lesson-arrow">→</span>
+						</a>
 					</li>
 				);
 			})}
@@ -34,22 +38,77 @@ const baseUrl = import.meta.env.BASE_URL;
 	)}
 </Layout>
 <style>
+	.back-link a {
+		font-size: 0.9rem;
+		color: var(--color-text-muted);
+		text-decoration: none;
+	}
+	.back-link a:hover {
+		color: var(--color-accent-ink);
+	}
 	.course-meta {
-		color: #777;
+		color: var(--color-text-muted);
+	}
+	.empty-state {
+		color: var(--color-text-muted);
+		background: var(--color-surface-2);
+		border-radius: var(--radius-md);
+		padding: 1.5rem;
+		text-align: center;
 	}
 	.lesson-list {
-		margin-top: 1.5rem;
+		margin-top: 1.75rem;
+		list-style: none;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
 	}
 	.lesson-list li {
-		margin: 0.6rem 0;
-		font-size: 1.05rem;
+		margin: 0;
+		padding: 0;
 	}
-	.badge {
-		margin-left: 0.5rem;
-		font-size: 0.75rem;
-		background: var(--callout-bg);
-		border: 1px solid var(--callout-border);
-		border-radius: 999px;
-		padding: 0.1rem 0.6rem;
+	.lesson-list li::before {
+		content: none;
+	}
+	.lesson-list a {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		padding: 0.85rem 1.1rem;
+		text-decoration: none;
+		color: var(--color-text);
+		box-shadow: var(--shadow-sm);
+		transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+	}
+	.lesson-list a:hover {
+		transform: translateX(3px);
+		box-shadow: var(--shadow-md);
+		border-color: var(--color-accent);
+	}
+	.lesson-num {
+		flex-shrink: 0;
+		width: 2.1rem;
+		height: 2.1rem;
+		border-radius: 50%;
+		background: var(--color-accent-soft);
+		color: var(--color-accent-ink);
+		font-weight: 700;
+		font-size: 0.9rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.lesson-title {
+		flex: 1;
+		font-weight: 500;
+	}
+	.lesson-arrow {
+		color: var(--color-accent);
+		font-weight: 700;
+		flex-shrink: 0;
 	}
 </style>
