@@ -2,7 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
 
-const courses = (await getCollection("courses")).sort((a, b) => b.data.order - a.data.order);
+const allCourses = await getCollection("courses");
 const allLessons = await getCollection("lessons");
 const baseUrl = import.meta.env.BASE_URL;
 
@@ -19,36 +19,125 @@ const dayAccentMap: Record<string, string> = {
 function accentFor(dayOfWeek: string) {
 	return dayAccentMap[dayOfWeek] ?? "var(--color-accent)";
 }
+
+function lessonCountFor(slug: string) {
+	return allLessons.filter((l) => l.data.course === slug).length;
+}
+
+// 体験授業・Scratch wikiは特定の期間に属さないので、「その他」として一番下に分ける。
+const OTHER_SLUGS = new Set(["taiken-jugyo", "scratch-wiki"]);
+const periodCourses = allCourses.filter((c) => !OTHER_SLUGS.has(c.slug));
+const otherCourses = allCourses.filter((c) => OTHER_SLUGS.has(c.slug)).sort((a, b) => b.data.order - a.data.order);
+
+// 期間(period)ごとに列を作る。列の並び順は、その期間内で一番大きいorder(=一番新しい)を基準に降順。
+const periodMap = new Map<string, typeof periodCourses>();
+for (const course of periodCourses) {
+	const list = periodMap.get(course.data.period) ?? [];
+	list.push(course);
+	periodMap.set(course.data.period, list);
+}
+const periodColumns = [...periodMap.entries()]
+	.map(([period, courses]) => ({
+		period,
+		courses: courses.sort((a, b) => b.data.order - a.data.order),
+		maxOrder: Math.max(...courses.map((c) => c.data.order)),
+	}))
+	.sort((a, b) => b.maxOrder - a.maxOrder);
 ---
 <Layout>
 	<h1>授業資料一覧</h1>
 	<p>バンタン中等部で行っているプログラミング授業(Scratch)の資料です。コースを選んでください。</p>
-	<div class="course-grid">
-		{courses.map((course) => {
-			const lessonCount = allLessons.filter((l) => l.data.course === course.slug).length;
-			return (
-				<a class="course-card" style={`--card-accent: ${accentFor(course.data.dayOfWeek)}`} href={`${baseUrl}courses/${course.slug}/`}>
-					<div class="course-card-top">
-						<span class="course-card-day">{course.data.dayOfWeek}</span>
-						{course.data.status === "partial" && <span class="badge">🚧 一部準備中</span>}
-					</div>
-					<div class="course-card-title">{course.data.title}</div>
-					<div class="course-card-meta">{course.data.period}</div>
-					<div class="course-card-footer">
-						{lessonCount > 0 ? `全${lessonCount}回` : "準備中"}
-						<span class="course-card-arrow">→</span>
-					</div>
-				</a>
-			);
-		})}
+
+	<div class="period-columns">
+		{periodColumns.map(({ period, courses }) => (
+			<div class="period-column">
+				<h2 class="period-heading">{period}</h2>
+				<div class="period-cards">
+					{courses.map((course) => {
+						const lessonCount = lessonCountFor(course.slug);
+						return (
+							<a class="course-card" style={`--card-accent: ${accentFor(course.data.dayOfWeek)}`} href={`${baseUrl}courses/${course.slug}/`}>
+								<div class="course-card-top">
+									<span class="course-card-day">{course.data.dayOfWeek}</span>
+									{course.data.status === "partial" && <span class="badge">🚧 一部準備中</span>}
+								</div>
+								<div class="course-card-title">{course.data.title}</div>
+								<div class="course-card-footer">
+									{lessonCount > 0 ? `全${lessonCount}回` : "準備中"}
+									<span class="course-card-arrow">→</span>
+								</div>
+							</a>
+						);
+					})}
+				</div>
+			</div>
+		))}
+	</div>
+
+	<div class="other-section">
+		<h2 class="other-heading">その他</h2>
+		<div class="course-grid">
+			{otherCourses.map((course) => {
+				const lessonCount = lessonCountFor(course.slug);
+				return (
+					<a class="course-card" style={`--card-accent: ${accentFor(course.data.dayOfWeek)}`} href={`${baseUrl}courses/${course.slug}/`}>
+						<div class="course-card-top">
+							<span class="course-card-day">{course.data.dayOfWeek}</span>
+							{course.data.status === "partial" && <span class="badge">🚧 一部準備中</span>}
+						</div>
+						<div class="course-card-title">{course.data.title}</div>
+						<div class="course-card-meta">{course.data.period}</div>
+						<div class="course-card-footer">
+							{lessonCount > 0 ? `全${lessonCount}回` : "準備中"}
+							<span class="course-card-arrow">→</span>
+						</div>
+					</a>
+				);
+			})}
+		</div>
 	</div>
 </Layout>
 <style>
+	.period-columns {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+		gap: 1.75rem;
+		align-items: start;
+		margin-top: 2rem;
+	}
+
+	.period-heading {
+		font-size: 0.95rem;
+		font-weight: 700;
+		color: var(--color-text-muted);
+		margin: 0 0 0.9rem;
+		padding: 0 0 0.5rem;
+		border-bottom: 2px solid var(--color-border);
+	}
+
+	.period-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+	}
+
+	.other-section {
+		margin-top: 3rem;
+		padding-top: 2.25rem;
+		border-top: 2px dashed var(--color-border);
+	}
+
+	.other-heading {
+		font-size: 1rem;
+		font-weight: 700;
+		color: var(--color-text-muted);
+		margin: 0 0 1rem;
+	}
+
 	.course-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 		gap: 1.1rem;
-		margin-top: 2rem;
 	}
 
 	.course-card {
