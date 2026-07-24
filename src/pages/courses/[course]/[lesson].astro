@@ -19,15 +19,39 @@ export async function getStaticPaths() {
 const { lesson, course } = Astro.props;
 const { Content } = await render(lesson);
 const baseUrl = import.meta.env.BASE_URL;
+
+// 体験授業のように、1つのレッスンが「ハブ」となって他のレッスンへのリンクを
+// 挟みながら進行するコースでは、戻るリンクはコース一覧ではなくハブページを指す。
+const lessonOrder = lesson.slug.split("/").slice(1).join("/");
+const hubLesson = course?.data.hubLesson;
+const isHub = hubLesson !== undefined && lessonOrder === hubLesson;
+
+let backHref: string;
+let backLabel: string;
+if (isHub) {
+	backHref = baseUrl;
+	backLabel = "← 授業資料一覧";
+} else if (hubLesson !== undefined) {
+	backHref = `${baseUrl}courses/${course!.slug}/${hubLesson}/`;
+	backLabel = `← ${course!.data.title}に戻る`;
+} else {
+	backHref = `${baseUrl}courses/${course?.slug}/`;
+	backLabel = `← ${course?.data.title} 一覧`;
+}
 ---
 <Layout title={`${lesson.data.title} - ${course?.data.title ?? ""}`}>
-	<p class="back-link"><a href={`${baseUrl}courses/${course?.slug}/`}>← {course?.data.title} 一覧</a></p>
+	<p class="back-link"><a href={backHref}>{backLabel}</a></p>
 	{lesson.data.status === "partial" && (
 		<aside><p class="aside-icon">💡</p><p>{lesson.data.note ?? "このページは画像などが準備中です。"}</p></aside>
 	)}
 	<article>
 		<Content />
 	</article>
+	{hubLesson !== undefined && !isHub && (
+		<a class="hub-return-button" href={`${baseUrl}courses/${course!.slug}/${hubLesson}/`}>
+			← {course!.data.title}に戻る
+		</a>
+	)}
 </Layout>
 <style>
 	.back-link a {
@@ -37,5 +61,27 @@ const baseUrl = import.meta.env.BASE_URL;
 	}
 	.back-link a:hover {
 		color: var(--color-accent-ink);
+	}
+
+	.hub-return-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: 3rem 0 1rem;
+		padding: 1.1rem 1.5rem;
+		background: var(--color-accent);
+		color: white;
+		font-weight: 700;
+		font-size: 1.05rem;
+		text-decoration: none;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-md);
+		transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+	}
+
+	.hub-return-button:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lg);
+		filter: brightness(1.08);
 	}
 </style>

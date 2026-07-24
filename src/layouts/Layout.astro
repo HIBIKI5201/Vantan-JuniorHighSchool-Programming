@@ -28,8 +28,45 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		<footer class="site-footer">
 			<p>バンタン中等部 プログラミング授業</p>
 		</footer>
+		<div id="lightbox-overlay">
+			<img id="lightbox-img" alt="" />
+		</div>
 	</body>
 </html>
+<script>
+	// レッスン本文中の画像をクリックすると拡大表示し、もう一度クリック(または背景クリック・Escキー)で戻る。
+	const overlay = document.getElementById("lightbox-overlay") as HTMLDivElement;
+	const overlayImg = document.getElementById("lightbox-img") as HTMLImageElement;
+
+	function openLightbox(src: string, alt: string) {
+		overlayImg.src = src;
+		overlayImg.alt = alt;
+		overlay.classList.add("open");
+		document.body.style.overflow = "hidden";
+	}
+
+	function closeLightbox() {
+		overlay.classList.remove("open");
+		overlayImg.src = "";
+		document.body.style.overflow = "";
+	}
+
+	document.addEventListener("click", (e) => {
+		const target = e.target as HTMLElement;
+		const img = target.closest("article img") as HTMLImageElement | null;
+		if (img) {
+			openLightbox(img.currentSrc || img.src, img.alt);
+			return;
+		}
+		if (target === overlay || target === overlayImg) {
+			closeLightbox();
+		}
+	});
+
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape") closeLightbox();
+	});
+</script>
 <style is:global>
 	:root {
 		color-scheme: light;
@@ -273,9 +310,47 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		transition: transform 0.2s ease, box-shadow 0.2s ease;
 	}
 
+	article img {
+		cursor: zoom-in;
+	}
+
 	article img:hover {
 		transform: scale(1.012);
 		box-shadow: var(--shadow-md);
+	}
+
+	/* ---------- 画像の拡大表示(ライトボックス) ---------- */
+
+	#lightbox-overlay {
+		position: fixed;
+		inset: 0;
+		display: none;
+		align-items: center;
+		justify-content: center;
+		padding: 3rem 1.5rem;
+		background: rgba(10, 10, 14, 0.85);
+		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
+		z-index: 1000;
+		cursor: zoom-out;
+	}
+
+	#lightbox-overlay.open {
+		display: flex;
+	}
+
+	#lightbox-overlay img {
+		max-width: 100%;
+		max-height: 100%;
+		margin: 0;
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-lg);
+		cursor: zoom-out;
+		transition: none;
+	}
+
+	#lightbox-overlay img:hover {
+		transform: none;
 	}
 
 	/* ---------- lists ---------- */
@@ -498,6 +573,61 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	article a[href*="/courses/scratch-wiki/"]:hover {
 		background: var(--color-accent);
 		color: white;
+	}
+
+	/* ---------- 体験授業のハブページなど、他レッスンへの独立した段落リンクをボタン風にする ---------- */
+	/* (Scratch wikiへのリンクは上の文中チップの方を使うので除外する) */
+
+	article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) {
+		margin: 1rem 0;
+	}
+
+	article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) > a {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		background: var(--color-accent-soft);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		padding: 0.85rem 1.15rem;
+		font-weight: 700;
+		color: var(--color-accent-ink);
+		text-decoration: none;
+		transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+	}
+
+	article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) > a:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+		border-color: var(--color-accent);
+	}
+
+	article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) > a::before {
+		content: "▶";
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 50%;
+		background: var(--color-surface);
+		font-size: 0.7rem;
+		flex-shrink: 0;
+	}
+
+	article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) > a::after {
+		content: "このページを開く";
+		margin-left: auto;
+		font-size: 0.72rem;
+		font-weight: 500;
+		color: var(--color-text-muted);
+		white-space: nowrap;
+	}
+
+	@media (max-width: 480px) {
+		article p:has(> a[href*="/courses/"]:only-child):not(:has(> a[href*="/courses/scratch-wiki/"])) > a::after {
+			display: none;
+		}
 	}
 
 	/* ---------- 汎用ユーティリティ ---------- */

@@ -12,6 +12,11 @@ const courses = defineCollection({
     order: z.number().default(0), // トップページでの並び順(新しい期が上に来るように)
     status: z.enum(['complete', 'partial']).default('complete'),
     note: z.string().optional(), // partialの時の補足(画像未移行など)
+    // 体験授業のように、1つのレッスンが「ハブ」となって他のレッスンへのリンクを
+    // 本文中に挟みながら進行するコース向け。値はハブになるレッスンのorder番号を
+    // ゼロ埋め2桁の文字列で指定する(例: "00")。指定すると、そのコースの他のレッスンページの
+    // 「戻る」リンクが、コース一覧ではなくこのハブページを指すようになる。
+    hubLesson: z.string().optional(),
   }),
 });
 
