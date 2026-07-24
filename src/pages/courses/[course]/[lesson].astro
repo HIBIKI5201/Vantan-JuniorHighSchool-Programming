@@ -4,51 +4,44 @@ import { getCollection, getEntry, render } from "astro:content";
 
 export async function getStaticPaths() {
 	const lessons = await getCollection("lessons");
+	const courses = await getCollection("courses");
+	const courseBySlug = new Map(courses.map((c) => [c.slug, c]));
+
 	return Promise.all(
-		lessons.map(async (lesson) => {
-			const [courseSlug, ...rest] = lesson.slug.split("/");
-			const course = await getEntry("courses", courseSlug);
-			return {
-				params: { course: courseSlug, lesson: rest.join("/") },
-				props: { lesson, course },
-			};
-		})
+		lessons
+			.filter((lesson) => {
+				const [courseSlug, ...rest] = lesson.slug.split("/");
+				const course = courseBySlug.get(courseSlug);
+				const lessonOrder = rest.join("/");
+				// ハブレッスンは /courses/<slug>/ 自体で表示するので、ここでは別ページを作らない。
+				return course?.data.hubLesson !== lessonOrder;
+			})
+			.map(async (lesson) => {
+				const [courseSlug, ...rest] = lesson.slug.split("/");
+				const course = await getEntry("courses", courseSlug);
+				return {
+					params: { course: courseSlug, lesson: rest.join("/") },
+					props: { lesson, course },
+				};
+			})
 	);
 }
 
 const { lesson, course } = Astro.props;
 const { Content } = await render(lesson);
 const baseUrl = import.meta.env.BASE_URL;
-
-// 体験授業のように、1つのレッスンが「ハブ」となって他のレッスンへのリンクを
-// 挟みながら進行するコースでは、戻るリンクはコース一覧ではなくハブページを指す。
-const lessonOrder = lesson.slug.split("/").slice(1).join("/");
-const hubLesson = course?.data.hubLesson;
-const isHub = hubLesson !== undefined && lessonOrder === hubLesson;
-
-let backHref: string;
-let backLabel: string;
-if (isHub) {
-	backHref = baseUrl;
-	backLabel = "← 授業資料一覧";
-} else if (hubLesson !== undefined) {
-	backHref = `${baseUrl}courses/${course!.slug}/${hubLesson}/`;
-	backLabel = `← ${course!.data.title}に戻る`;
-} else {
-	backHref = `${baseUrl}courses/${course?.slug}/`;
-	backLabel = `← ${course?.data.title} 一覧`;
-}
+const hasHub = course?.data.hubLesson !== undefined;
 ---
 <Layout title={`${lesson.data.title} - ${course?.data.title ?? ""}`}>
-	<p class="back-link"><a href={backHref}>{backLabel}</a></p>
+	<p class="back-link"><a href={`${baseUrl}courses/${course?.slug}/`}>← {course?.data.title} 一覧</a></p>
 	{lesson.data.status === "partial" && (
 		<aside><p class="aside-icon">💡</p><p>{lesson.data.note ?? "このページは画像などが準備中です。"}</p></aside>
 	)}
 	<article>
 		<Content />
 	</article>
-	{hubLesson !== undefined && !isHub && (
-		<a class="hub-return-button" href={`${baseUrl}courses/${course!.slug}/${hubLesson}/`}>
+	{hasHub && (
+		<a class="hub-return-button" href={`${baseUrl}courses/${course!.slug}/`}>
 			← {course!.data.title}に戻る
 		</a>
 	)}
