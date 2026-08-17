@@ -3,3 +3,10 @@ dist/
 .astro/
 .DS_Store
 _notion-source/
+
+# 学校の内部資料(年間スケジュールなど)。このリポジトリは公開されているので入れない。
+docs/Info/
+
+# Claude Codeのローカル状態(共有しない)
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
