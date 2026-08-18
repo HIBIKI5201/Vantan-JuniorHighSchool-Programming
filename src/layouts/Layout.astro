@@ -499,6 +499,14 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		--color-callout-icon-bg: color-mix(in srgb, var(--color-partial-border) 60%, white);
 	}
 
+	/* 制作中(draft)の注意書き。公開サイトには出ないので、プレビューでだけ見える。
+	   partialの「画像準備中」と見分けが付くように、あえて色味を変えている。 */
+	main > aside.draft-notice {
+		--color-callout-bg: var(--color-missing-bg);
+		--color-callout-border: var(--color-missing-border);
+		--color-callout-icon-bg: color-mix(in srgb, var(--color-missing-border) 60%, white);
+	}
+
 	/* ---------- スクリーンショット準備中のプレースホルダー ---------- */
 	/* 本文には先に ![image.png](/lessons/.../image-1.png) を書いておき、public/に実体を置くまでの間
 	   astro.config.mjs の remarkMissingImagePlaceholder がこの見た目に差し替える。 */
@@ -769,6 +777,13 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	}
 
 	/* ---------- 汎用ユーティリティ ---------- */
+
+	/* 制作中(draft)のバッジ。プレビューでだけ見える */
+	.badge-draft {
+		background: var(--color-missing-bg);
+		color: var(--color-missing-text);
+		border-color: var(--color-missing-border);
+	}
 
 	.badge {
 		display: inline-flex;

@@ -25,6 +25,8 @@ description: バンタン中等部のScratch授業資料(src/content/lessons/)�
 
 授業1回はだいたい **手順の見出し(`###`)が8〜12個**。それ以上になるなら回を分ける。
 
+新しく書いた回は、仕上がるまで `status: draft` のままにしておくこと。
+
 ### 2. 雛形を作る
 
 ```bash
@@ -141,8 +143,9 @@ npm run check
 - パスは `/lessons/...` から書く(GitHub Pagesのbaseは自動で付くので書かない)
 - **実体が無い間はビルド時に「スクリーンショット準備中」の枠に自動で差し替わる**ので、
   壊れた画像にはならない。`public/lessons/<courseSlug>/<NN>/` に置けば次のビルドから出る
-- スクショ待ちの間は frontmatter を `status: partial` にして
-  `note: "スクリーンショットは授業のあとに追加します。"` を付ける。揃ったら `complete` に戻す
+- **書きかけの回は `status: draft` にする。** 公開サイトには出ず、`npm run dev` でだけ見える
+  (生徒に未完成の資料を見せないため)。スクショと授業日と見本URLが埋まったら
+  `complete`(画像がまだなら `partial`)に変えて公開する
 
 ### 用語リンク(Scratch wiki)
 

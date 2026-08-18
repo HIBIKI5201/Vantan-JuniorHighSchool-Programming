@@ -1,9 +1,10 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
 import { getCollection, getEntry, render } from "astro:content";
+import { isPublished } from "../../../utils/visibility";
 
 export async function getStaticPaths() {
-	const courses = await getCollection("courses");
+	const courses = (await getCollection("courses")).filter(isPublished);
 	return courses.map((course) => ({ params: { course: course.slug }, props: { course } }));
 }
 
@@ -15,7 +16,9 @@ const baseUrl = import.meta.env.BASE_URL;
 const hubEntry = course.data.hubLesson !== undefined ? await getEntry("lessons", `${course.slug}/${course.data.hubLesson}`) : undefined;
 const HubContent = hubEntry ? (await render(hubEntry)).Content : undefined;
 
-const allLessons = hubEntry ? [] : await getCollection("lessons", (entry) => entry.data.course === course.slug);
+const allLessons = hubEntry
+	? []
+	: await getCollection("lessons", (entry) => entry.data.course === course.slug && isPublished(entry));
 const lessons = allLessons.sort((a, b) => a.data.order - b.data.order);
 ---
 <Layout title={`${course.data.title} - バンタン中等部`}>
@@ -41,6 +44,7 @@ const lessons = allLessons.sort((a, b) => a.data.order - b.data.order);
 									<span class="lesson-num">{lesson.data.order}</span>
 									<span class="lesson-title">{lesson.data.title}</span>
 									{lesson.data.status === "partial" && <span class="badge">画像準備中</span>}
+									{lesson.data.status === "draft" && <span class="badge badge-draft">制作中</span>}
 									<span class="lesson-arrow">→</span>
 								</a>
 							</li>

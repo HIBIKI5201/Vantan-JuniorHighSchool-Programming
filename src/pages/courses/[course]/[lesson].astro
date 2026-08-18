@@ -1,6 +1,7 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
 import { getCollection, getEntry, render } from "astro:content";
+import { isPublished } from "../../../utils/visibility";
 
 export async function getStaticPaths() {
 	const lessons = await getCollection("lessons");
@@ -9,6 +10,7 @@ export async function getStaticPaths() {
 
 	return Promise.all(
 		lessons
+			.filter(isPublished)
 			.filter((lesson) => {
 				const [courseSlug, ...rest] = lesson.slug.split("/");
 				const course = courseBySlug.get(courseSlug);
@@ -42,6 +44,9 @@ const showToc = tocItems.length >= 3;
 ---
 <Layout title={`${lesson.data.title} - ${course?.data.title ?? ""}`}>
 	<p class="back-link"><a href={`${baseUrl}courses/${course?.slug}/`}>← {course?.data.title} 一覧</a></p>
+	{lesson.data.status === "draft" && (
+		<aside class="draft-notice"><p class="aside-icon">🚧</p><p>このページは<strong>制作中</strong>です。公開サイトには出ていません(プレビューでのみ表示されます)。</p></aside>
+	)}
 	{lesson.data.status === "partial" && (
 		<aside><p class="aside-icon">💡</p><p>{lesson.data.note ?? "このページは画像などが準備中です。"}</p></aside>
 	)}

@@ -1,9 +1,11 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
+import { isPublished } from "../utils/visibility";
 
-const allCourses = await getCollection("courses");
-const allLessons = await getCollection("lessons");
+// 制作中(status: draft)のものは公開サイトには出さない(npm run dev では出る)
+const allCourses = (await getCollection("courses")).filter(isPublished);
+const allLessons = (await getCollection("lessons")).filter(isPublished);
 const baseUrl = import.meta.env.BASE_URL;
 
 const dayAccentMap: Record<string, string> = {

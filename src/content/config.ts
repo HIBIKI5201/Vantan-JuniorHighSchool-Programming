@@ -10,7 +10,8 @@ const courses = defineCollection({
     period: z.string(), // 例: "2026 7~9月"
     dayOfWeek: z.string(), // 例: "金曜日"
     order: z.number().default(0), // トップページでの並び順(新しい期が上に来るように)
-    status: z.enum(['complete', 'partial']).default('complete'),
+    // complete = 公開ずみ / partial = 公開するが画像などが準備中 / draft = 制作中(サイトに出さない)
+    status: z.enum(['complete', 'partial', 'draft']).default('complete'),
     note: z.string().optional(), // partialの時の補足(画像未移行など)
     // 体験授業のように、1つのレッスンが「ハブ」となって他のレッスンへのリンクを
     // 本文中に挟みながら進行するコース向け。値はハブになるレッスンのorder番号を
@@ -27,7 +28,8 @@ const lessons = defineCollection({
     order: z.number(), // #0, #1, #2... の並び順
     title: z.string(), // 例: "#2 敵を作ろう"
     sessionDate: z.string().optional(),
-    status: z.enum(['complete', 'partial']).default('complete'),
+    // complete = 公開ずみ / partial = 公開するが画像などが準備中 / draft = 制作中(サイトに出さない)
+    status: z.enum(['complete', 'partial', 'draft']).default('complete'),
     note: z.string().optional(),
   }),
 });

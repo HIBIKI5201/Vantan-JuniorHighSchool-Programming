@@ -6,7 +6,7 @@
 //   [エラー]  frontmatterの不足 / course名やorderとファイル名の食い違い
 //   [エラー]  wiki:用語 が Scratch wiki のページに解決できない
 //   [エラー]  status: complete なのにスクショが足りない
-//   [警告]    スクショ待ちの枚数(status: partial の間は正常なので警告どまり)
+//   [警告]    スクショ待ちの枚数(status: partial / draft の間は正常なので警告どまり)
 //   [警告]    用語リンクのページ番号直書き / 「◯◯とは：」の前置き
 //   [警告]    手順の見出し(###)に画像やasideが無い
 //   [警告]    asideの閉じ忘れ
@@ -75,6 +75,7 @@ const courseSlugs = new Set(
 const referencedImages = new Set();
 let lessonCount = 0;
 let pendingShots = 0;
+let draftCount = 0;
 
 for (const courseSlug of fs.readdirSync(LESSONS_DIR)) {
   const dir = path.join(LESSONS_DIR, courseSlug);
@@ -110,9 +111,10 @@ for (const courseSlug of fs.readdirSync(LESSONS_DIR)) {
     } else if (fm.order !== undefined && Number(fm.order) !== Number(nnFromName)) {
       err(fileRel, 1, `order(${fm.order}) とファイル名(${nnFromName}) が合っていません`);
     }
-    if (fm.status && !['complete', 'partial'].includes(fm.status)) {
-      err(fileRel, 1, `status は complete か partial にしてください: "${fm.status}"`);
+    if (fm.status && !['complete', 'partial', 'draft'].includes(fm.status)) {
+      err(fileRel, 1, `status は complete / partial / draft のどれかにしてください: "${fm.status}"`);
     }
+    if (fm.status === 'draft') draftCount += 1;
 
     // --- 本文を1行ずつ ---
     let missingShots = 0;
@@ -184,7 +186,7 @@ for (const courseSlug of fs.readdirSync(LESSONS_DIR)) {
       } else {
         warn(fileRel, 0, `スクショ待ち ${missingShots}/${totalShots} 枚`);
       }
-    } else if (totalShots > 0 && fm.status === 'partial') {
+    } else if (totalShots > 0 && fm.status !== 'complete') {
       warn(fileRel, 0, `スクショは全部揃っています。status を complete にできます`);
     }
   }
@@ -216,7 +218,12 @@ const show = (label, list) => {
   }
 };
 
-console.log(`レッスン ${lessonCount}件 / Scratch wiki 用語 ${wikiTerms.size}個 を確認しました。`);
+console.log(
+  `レッスン ${lessonCount}件 (うち制作中 ${draftCount}件) / Scratch wiki 用語 ${wikiTerms.size}個 を確認しました。`
+);
+if (draftCount > 0) {
+  console.log(`制作中(status: draft)の ${draftCount}件は公開サイトには出ません(npm run dev では見られます)。`);
+}
 show('エラー', errors);
 show('警告', warnings);
 if (infos.length) console.log(`\n情報 (${infos.length}件) — 使われていない画像があります(--verboseで一覧)`);
