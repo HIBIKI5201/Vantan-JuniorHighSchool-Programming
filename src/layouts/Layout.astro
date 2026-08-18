@@ -235,6 +235,8 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	h1, h2, h3 {
 		line-height: 1.45;
 		letter-spacing: 0.01em;
+		/* もくじから飛んだ時に、上の固定ヘッダーで見出しが隠れないようにする */
+		scroll-margin-top: 5.5rem;
 	}
 
 	/* 大セクション見出し(目標 / 見本 / やってみよう / 終わり など) */

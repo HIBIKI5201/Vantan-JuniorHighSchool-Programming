@@ -28,9 +28,17 @@ export async function getStaticPaths() {
 }
 
 const { lesson, course } = Astro.props;
-const { Content } = await render(lesson);
+const { Content, headings } = await render(lesson);
 const baseUrl = import.meta.env.BASE_URL;
 const hasHub = course?.data.hubLesson !== undefined;
+
+// 画面右の「もくじ」に並べる見出し。
+// 本文の一番最初のh1はページタイトルそのものなので、もくじには入れない
+// (クリックしても一番上に戻るだけで意味がないため)。
+const tocItems = headings
+	.filter((h) => h.depth <= 3 && h.slug)
+	.filter((h, i) => !(i === 0 && h.depth === 1));
+const showToc = tocItems.length >= 3;
 ---
 <Layout title={`${lesson.data.title} - ${course?.data.title ?? ""}`}>
 	<p class="back-link"><a href={`${baseUrl}courses/${course?.slug}/`}>← {course?.data.title} 一覧</a></p>
@@ -44,6 +52,18 @@ const hasHub = course?.data.hubLesson !== undefined;
 		<a class="hub-return-button" href={`${baseUrl}courses/${course!.slug}/`}>
 			← {course!.data.title}に戻る
 		</a>
+	)}
+	{showToc && (
+		<nav class="toc" aria-label="もくじ">
+			<p class="toc-title">もくじ</p>
+			<ul class="toc-list">
+				{tocItems.map((h) => (
+					<li class={`toc-item toc-depth-${h.depth}`}>
+						<a class="toc-link" href={`#${h.slug}`}>{h.text}</a>
+					</li>
+				))}
+			</ul>
+		</nav>
 	)}
 </Layout>
 <style>
@@ -77,4 +97,187 @@ const hasHub = course?.data.hubLesson !== undefined;
 		box-shadow: var(--shadow-lg);
 		filter: brightness(1.08);
 	}
+
+	/* ---------- 画面右のもくじ ---------- */
+	/* 本文(max-width 780px)の右側の余白に固定で置く。
+	   余白が足りない画面幅では丸ごと隠す(本文の邪魔をしないため)。 */
+
+	.toc {
+		display: none;
+	}
+
+	@media (min-width: 1240px) {
+		.toc {
+			display: block;
+			position: fixed;
+			top: 5.5rem;
+			left: calc(50% + 404px);
+			width: 208px;
+			max-height: calc(100vh - 8rem);
+			overflow-y: auto;
+			overscroll-behavior: contain;
+			padding: 0.9rem 0.5rem 0.9rem 0.9rem;
+			background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+			backdrop-filter: blur(8px);
+			-webkit-backdrop-filter: blur(8px);
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius-md);
+			box-shadow: var(--shadow-sm);
+			font-size: 0.82rem;
+			line-height: 1.55;
+			scrollbar-width: thin;
+		}
+	}
+
+	@media (min-width: 1420px) {
+		.toc {
+			width: 248px;
+		}
+	}
+
+	.toc-title {
+		margin: 0 0 0.6rem;
+		padding-bottom: 0.45rem;
+		border-bottom: 1px solid var(--color-border);
+		font-size: 0.74rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+	}
+
+	.toc-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.toc-item {
+		margin: 0;
+		padding: 0;
+	}
+
+	.toc-item::before {
+		content: none;
+	}
+
+	.toc-link {
+		display: block;
+		padding: 0.3rem 0.5rem 0.3rem 0.6rem;
+		border-left: 2px solid transparent;
+		border-radius: 0 6px 6px 0;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+	}
+
+	.toc-link:hover {
+		background: var(--color-accent-soft);
+		color: var(--color-accent-ink);
+	}
+
+	/* 見出しの深さで字下げと強さを変える */
+	.toc-depth-1 > .toc-link {
+		font-weight: 700;
+		color: var(--color-text);
+		margin-top: 0.35rem;
+	}
+
+	.toc-depth-2 > .toc-link {
+		padding-left: 1.35rem;
+		font-weight: 500;
+	}
+
+	.toc-depth-3 > .toc-link {
+		padding-left: 2.1rem;
+		font-size: 0.95em;
+	}
+
+	/* 今読んでいる場所。
+	   Astroのスコープ付きCSSでは .toc-depth-1 > .toc-link の方が詳細度が高くなるので、
+	   こちらも子セレクタにして勝てるようにしている。 */
+	.toc-item > .toc-link.is-active {
+		border-left-color: var(--color-accent);
+		background: var(--color-accent-soft);
+		color: var(--color-accent-ink);
+		font-weight: 700;
+	}
 </style>
+<script>
+	// もくじの「今読んでいる場所」を、スクロールに合わせて光らせる。
+	//
+	// 見出しの位置は最初に測っておき、スクロール中は数字を比べるだけにしている。
+	// (毎回getBoundingClientRectを呼ぶとスクロールのたびにレイアウト計算が走って重くなるため)
+	// requestAnimationFrameは裏に回ったタブでは呼ばれないことがあるので、タイマーで間引いている。
+	const toc = document.querySelector(".toc");
+	if (toc) {
+		const links = Array.from(toc.querySelectorAll<HTMLAnchorElement>(".toc-link"));
+		const targets = links.map((link) =>
+			document.getElementById(decodeURIComponent(link.hash.slice(1)))
+		);
+
+		let tops: number[] = [];
+		let pageHeight = 0;
+		let activeIndex = -1;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+
+		function measure() {
+			tops = targets.map((el) =>
+				el ? el.getBoundingClientRect().top + window.scrollY : Number.POSITIVE_INFINITY
+			);
+			pageHeight = document.documentElement.scrollHeight;
+		}
+
+		function update() {
+			// 画像が後から読み込まれて高さが変わったら測り直す
+			if (document.documentElement.scrollHeight !== pageHeight) measure();
+
+			// 画面の上から少し下がった所を「今読んでいる行」とみなし、
+			// その線より上にある見出しのうち一番最後のものを現在地とする。
+			const line = window.scrollY + 140;
+			let next = 0;
+			for (let i = 0; i < tops.length; i++) {
+				if (tops[i] <= line) next = i;
+			}
+			// 一番下まで来た時は最後の項目を選ぶ(短い節が選ばれないようにする)
+			if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+				next = links.length - 1;
+			}
+
+			if (next === activeIndex) return;
+			if (activeIndex >= 0) links[activeIndex].classList.remove("is-active");
+			activeIndex = next;
+			const link = links[activeIndex];
+			link.classList.add("is-active");
+
+			// もくじが長い時、光っている項目がもくじの外に出ないようにする
+			const linkBox = link.getBoundingClientRect();
+			const tocBox = toc.getBoundingClientRect();
+			if (linkBox.top < tocBox.top || linkBox.bottom > tocBox.bottom) {
+				link.scrollIntoView({ block: "nearest" });
+			}
+		}
+
+		function schedule() {
+			if (timer !== null) return;
+			timer = setTimeout(() => {
+				timer = null;
+				update();
+			}, 60);
+		}
+
+		function remeasure() {
+			measure();
+			update();
+		}
+
+		window.addEventListener("scroll", schedule, { passive: true });
+		window.addEventListener("resize", remeasure, { passive: true });
+		window.addEventListener("load", remeasure);
+
+		measure();
+		update();
+	}
+</script>
