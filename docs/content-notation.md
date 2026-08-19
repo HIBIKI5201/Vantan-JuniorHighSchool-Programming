@@ -23,8 +23,37 @@ public/
             └── imageX.png     # そのレッスンで使う画像
 _notion-source/                # Notionエクスポートの生データ置き場(.gitignore済み、コミットしない)
 scripts/
-└── migrate-from-notion.mjs    # _notion-source/ → src/content/ + public/lessons/ への変換スクリプト
+├── migrate-from-notion.mjs    # _notion-source/ → src/content/ + public/lessons/ への変換スクリプト
+├── new-lesson.mjs             # 新しい回の雛形を作る (npm run new-lesson)
+└── check-lessons.mjs          # 記法・スクショ・用語リンクの検査 (npm run check)
+.claude/
+└── skills/lesson-writer/      # 授業資料を書く時のClaude Code用スキル
 ```
+
+## よく使うコマンド
+
+```bash
+npm run new-lesson -- kinyo-2026-7-9 4 "タイトルとリザルトを作ろう"   # 雛形を作る
+npm run check                                                        # 記法を検査する
+npm run dev                                                          # 書きながら確認(制作中の回も出る)
+npm run release                                                      # 生徒が見る画面を確認(制作中は出ない)
+```
+
+Windowsでは `dev.bat` / `release.bat` をダブルクリックしても同じことができる。
+
+| | 見えるもの | ポート |
+| :--- | :--- | :--- |
+| `dev.bat` | 制作中(draft)の回も「制作中」バッジ付きで出る | 4321 |
+| `release.bat` | 本番と同じビルド。制作中の回は出ない | 4322 |
+
+ポートを分けてあるので、**両方同時に立ち上げて見比べられる**。
+
+`npm run check` は次を見ている。**エラーが0になってからコミットする。**
+
+- frontmatterの不足、`order`とファイル名の食い違い、存在しないコース
+- `wiki:` の用語がScratch wikiのページに解決できない
+- `status: complete` なのにスクショが足りない(逆に全部揃っていれば `complete` にできると教えてくれる)
+- 「やってみよう」の中の `###` 手順にスクショやasideが無い
 
 `courseSlug` は既存のものは `<曜日ローマ字>-<年>-<開始月>-<終了月>` の形式に揃えている
 (例: `kinyo-2026-1-3` = 金曜日, 2026年1〜3月期)。曜日を含まないコース(体験授業・Scratch wiki)は
@@ -38,7 +67,7 @@ title: "金曜ゲーム"        # コース名(曜日・期間を含まない)
 period: "2026 1~3月"       # 表示用の期間
 dayOfWeek: "金曜日"        # 該当しない場合は "-" や "単発" など
 order: 20                  # トップページでの並び順(大きいほど上に表示される)
-status: complete           # "complete" | "partial"
+status: complete           # "complete" | "partial" | "draft"
 note: "..."                # 任意。トップ/コース一覧ページの💡欄に表示される
 ---
 ```
@@ -122,7 +151,7 @@ hubLesson: "00"   # このコースの中で「ハブ」として扱うレッス
 course: "kinyo-2026-1-3"   # 対応するコースのslug
 order: 3                   # "#3" などの回数。ファイル名のNN(2桁ゼロ埋め)と対応させる
 title: "#3 敵を作ろう"      # 一覧・ページタイトルに表示される
-status: complete           # "complete" | "partial"
+status: complete           # "complete" | "partial" | "draft"
 note: "..."                # 任意。status: partial の時にページ上部の💡欄に表示される
 ---
 ```
@@ -130,6 +159,34 @@ note: "..."                # 任意。status: partial の時にページ上部�
 `sessionDate` のようなフィールドは今のところ使っていない。授業日の情報は本文中に
 `授業日: 2026年2月6日` のようにテキストとしてそのまま書かれている(次の節を参照)。
 将来的にfrontmatterに切り出したくなったら `src/content/config.ts` のschemaに追加すること。
+
+### `status` の3つの値
+
+コース・レッスンのどちらにも使える。
+
+| 値 | 公開サイト | プレビュー(npm run dev) | 使う場面 |
+| :--- | :--- | :--- | :--- |
+| `complete` | 出る | 出る | 仕上がっている |
+| `partial` | 出る(「画像準備中」バッジ付き) | 同じ | 読めるが画像などが揃っていない |
+| `draft` | **出ない** | 出る(「制作中」バッジ付き) | 制作中。生徒に見せたくない |
+
+### `status: draft`(制作中)
+
+**書きかけの回を生徒に見せないためのもの。**
+
+`draft` を付けた回は、公開サイト(`npm run build`)ではページ自体が作られず、
+コース一覧にも、トップページの回数にも出てこない。
+
+一方 `npm run dev` のプレビューでは表示される。
+先生が授業前に下書きを読み返したり、書きながら見た目を確かめたりできるようにするため。
+プレビューでは一覧に「制作中」バッジが付き、ページの上にも
+「このページは制作中です。公開サイトには出ていません」という注意書きが出る。
+
+授業でスクショを撮って貼り、授業日と見本プロジェクトのURLを埋めたら
+`complete`(または画像がまだなら `partial`)に変えて公開する。
+
+判定は `src/utils/visibility.ts` の `isPublished()` にまとまっていて、
+トップページ・コース一覧・レッスンページの3か所で使っている。
 
 ### `status: partial` の使いどころ
 
@@ -142,9 +199,9 @@ note: "..."                # 任意。status: partial の時にページ上部�
   「まだ授業回のページがありません。準備が整い次第、追加します。」と自動で表示される
   (`src/pages/courses/[course]/index.astro` の分岐処理)。
 
-今のところ全9コース・全レッスンが `status: complete` になっている
-(過去に画像なしの暫定版を`partial`で載せたことがあったが、後から画像付きの完全な
-エクスポートが届いたので複製せず`complete`に置き換えた)。
+過去にNotionから移行した回はすべて `status: complete`。
+2026年8月に書き足した金曜/水曜の新しい回と、Scratch wikiの追加用語は、
+スクショがまだ無いので `draft` / `partial` になっている。
 
 ## 本文の記法
 
@@ -179,8 +236,22 @@ note: "..."                # 任意。status: partial の時にページ上部�
 | 追加でやってみる課題(任意) | `エクストラ課題` | `追加の実装` |
 | その日の振り返りフォーム(任意、2026年7月〜の新しい回のみ) | `今日のひとことを書こう！`(Google Formの`forms.gle`リンク) | (旧形式にはなし) |
 
-`見本`/`プロジェクト`セクションはURLをそのままの行に書くだけでよい(GitHub Flavored Markdownの
-自動リンクが効くので `[リンク文字](url)` にする必要はない)。
+`見本`/`プロジェクト`セクションと`今日のひとことを書こう！`セクションは、
+**URLをそのままの行に書くだけでよい**(GitHub Flavored Markdownの自動リンクが効く)。
+
+リンクの文字は `astro.config.mjs` の `remarkFriendlyLinkText` が自動で置き換えるので、
+本文に長いURLがそのまま出ることはない。
+
+| URL | 表示される文字 | 右側のラベル |
+| :--- | :--- | :--- |
+| `scratch.mit.edu/projects/...` | 先生の見本プロジェクト | Scratchで開く → |
+| `forms.gle/...` / `docs.google.com/forms/...` | 今日のひとことフォーム | 回答する → |
+
+自分で `[好きな文字](url)` と書いた場合はその文字が尊重されるので、
+別の見せ方をしたい時は手で書けばよい。
+
+先生のScratchプロジェクトURLがまだ無い時は、
+`（先生のプロジェクトURLを入れる）` とプレーンテキストで書いて残しておく。
 
 `覚えること`セクションは任意で、算数・理科などプログラミング以外の前提知識を、図解や
 参考動画・参考サイトへのリンクと一緒に説明する時に使う(例: `block-kuzushi-2025-10-12/01.md` の
@@ -203,6 +274,26 @@ note: "..."                # 任意。status: partial の時にページ上部�
   `public/lessons/<借りる側のcourseSlug>/<NN>/` に画像をコピーしてから参照する
   (`migrate-from-notion.mjs`は元のNotionの相対パス `../他のフォルダ/画像.png` を自動で
   解決してコピーしてくれる。詳しくはスクリプト内の`relativeResolved`の処理を参照)。
+
+### スクショが後から用意される場合(先に本文だけ書く時)
+
+授業資料は「先に本文を書く → 授業でScratchを作りながらスクショを撮る → 後から貼る」
+という順番で作ることが多い。そのため、**実体がまだ無くても画像リンクを先に書いてよい**。
+
+`astro.config.mjs` の `remarkMissingImagePlaceholder` が、ビルド時に
+`public/` に実体があるかを調べて、無ければ「📸 スクリーンショット準備中」の
+点線の枠に差し替える。壊れた画像アイコンにはならない。
+
+```markdown
+![image.png](/lessons/kinyo-2026-7-9/03/image.png)   ← 実体が無い間はプレースホルダー表示
+```
+
+あとから `public/lessons/kinyo-2026-7-9/03/image.png` を置けば、
+**次のビルドから自動的にその画像が表示される**(Markdownは書き換えなくてよい)。
+
+この状態の間はレッスンの`status`を`partial`にして、
+`note: "スクリーンショットは授業のあとに追加します。"` を付けておく。
+スクショが全部揃ったら`complete`に戻す(`npm run check`が教えてくれる)。
 
 ### コールアウト(吹き出し)
 
@@ -234,21 +325,35 @@ note: "..."                # 任意。status: partial の時にページ上部�
 - `目標`セクションや、対頂角・同位角・錯角のような単なる列挙 → `- ` の箇条書き
 - 実際にScratchで操作する手順 → `1.` `2.` の番号付きリスト(常にaside/画像の直後に置く)
 
-### 内部リンクについて
+### Scratch wikiの用語リンク
 
-Notionのエクスポートには、他ページへのリンク(`[変数とは：変数](../Scratch wiki/変数 xxxx.md)`)が
-含まれることがある。**Scratch wikiの用語ページへのリンクだけは特別扱いされ、実際のサイト内リンク
-(`/courses/scratch-wiki/<NN>/`)に変換される**(`scripts/migrate-from-notion.mjs` の
-`SCRATCH_WIKI_LESSONS` マップを使ってファイル名から該当ページを特定している)。表示は
-「📖 用語名」という丸いピル型のリンクになる(`Layout.astro` の
-`article a[href*="/courses/scratch-wiki/"]` のスタイル)。
+新しい用語が初めて出てくる手順の**すぐ後ろ**に、1行だけの段落として置く。
+
+```markdown
+[クローン](wiki:クローン)
+```
+
+- **`wiki:用語名` と書く。ページ番号(`/courses/scratch-wiki/09/`)は書かない。**
+  用語を1つ足して番号がずれた時に全レッスンを直す羽目になるため、
+  番号を引くのは `astro.config.mjs` の `remarkResolveWikiTerms` がビルド時にやる
+- 読みガナ付きのタイトルは括弧を含めても外しても引ける
+  (`wiki:初期化（しょきか）` でも `wiki:初期化` でもよい)
+- 解決できない用語は**ビルド時に警告**が出て、`npm run check` はエラーにする
+- **「クローンとは：」のような前置きは書かない。** 旧Notion資料はこの書き方だったが、
+  現在は用語カードとして表示されるので前置きは不要
+
+表示は2通りに自動で切り替わる(`Layout.astro`)。
+
+| 置き方 | 見た目 |
+| :--- | :--- |
+| 1行だけの段落として置く | 📖バッジ + 用語名 + 「用語をおさらい →」の**用語カード** |
+| 文章の途中に埋め込む | 「📖 用語名」の小さいピル型チップ |
+
+**用語ページが足りない時は先にwikiに追加する。**
+`src/content/lessons/scratch-wiki/<NN>.md` に番号の続きで作れば、すぐ `wiki:` で引けるようになる。
 
 Scratch wiki以外の内部ページへのリンク(他コースの別レッスンへのリンクなど)は、このサイトでは
-解決できないため、リンクを外してテキストだけ残すようになっている。手で新しく書く場合、
-Scratch wikiの用語を参照したい時は `[用語](/courses/scratch-wiki/<NN>/)`
-の形でリンクを書けばよい(NNは `scratch-wiki` コース内のそのレッスンの番号。
-`src/content/lessons/scratch-wiki/` を見て確認する)。それ以外の内部リンクは書かず、
-プレーンテキストにしておく。
+解決できないため、リンクを書かずプレーンテキストにしておく。
 
 (画像は前述の通り他コースのものも参照できる。)
 
@@ -263,7 +368,17 @@ Notionのエクスポートに画像の実体が含まれていなかった場�
 
 ## 新しいレッスンをゼロから書く場合(Notion経由でない場合)
 
-Notionを使わず直接このリポジトリにレッスンを書く場合は、次のテンプレートから始める。
+**まず `npm run new-lesson` で雛形を作るのが早い。**
+
+```bash
+npm run new-lesson -- <courseSlug> <回数> "<タイトル>" [手順の数]
+```
+
+レッスンのMarkdownと、スクショ置き場の `public/lessons/<courseSlug>/<NN>/` が同時に作られる。
+Claude Codeで書く場合は `.claude/skills/lesson-writer/` のスキルに、
+内容の決め方からasideのトーンまでまとまっている。
+
+手で書く場合は次のテンプレートから始める。
 
 ```markdown
 ---
