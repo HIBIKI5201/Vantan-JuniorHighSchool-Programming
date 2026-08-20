@@ -242,7 +242,7 @@ function remarkAutoWikiTerms() {
 
       const picked = hits.slice(0, AUTO_TERMS_PER_ASIDE);
       if (picked.length) {
-        for (const h of picked) used.add(h.url);        fs.appendFileSync(path.join(REPO_ROOT,'auto-debug.log'), JSON.stringify({picked:picked.map(x=>x.url),titles:picked.map(x=>wikiTitleByUrl.get(x.url)),size:wikiTitleByUrl.size})+String.fromCharCode(10));
+        for (const h of picked) used.add(h.url);
 
         // 手順の番号リストがあれば、その後ろに置く
         const insertAfter = children[end + 1]?.type === 'list' ? end + 1 : end;

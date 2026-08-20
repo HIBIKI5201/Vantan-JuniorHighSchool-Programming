@@ -26,6 +26,7 @@ scripts/
 ├── migrate-from-notion.mjs    # _notion-source/ → src/content/ + public/lessons/ への変換スクリプト
 ├── new-lesson.mjs             # 新しい回の雛形を作る (npm run new-lesson)
 ├── import-shots.mjs           # 撮ったスクショを命名規則に並べ替える (npm run shots)
+├── sync-term-cache.mjs        # 用語が増減したらAstroのキャッシュを消す (build/devの前に自動実行)
 └── check-lessons.mjs          # 記法・スクショ・用語リンクの検査 (npm run check)
 docs/
 ├── content-notation.md        # このファイル(記法のルール)
