@@ -177,23 +177,48 @@ function remarkWrapAsideIcon() {
 }
 
 
-// asideの説明文にScratch wikiの用語が出てきたら、その手順の後ろに用語カードを自動で足す。
+// 本文にScratch wikiの用語が出てきたら、その見出しのまとまりの最後に用語カードを自動で足す。
 // 毎回 [クローン](wiki:クローン) と手で書かなくても済むようにするため。
 //
-// ルール:
-//   - asideの中の本文だけを見る(手順の番号リストや地の文は見ない)
-//   - 1つのasideから足すのは最大2件まで(カードだらけにならないように)
-//   - 同じ用語は1ページにつき1回だけ(手書きのリンクが既にある用語も足さない)
-//   - カードはasideの直後ではなく、その後ろの番号リスト(手順)の下に置く
-//     (説明と手順が分断されないようにするため)
+// 「どこに付けるか」が肝になる。ただ最初に見つかった所に付けると、
+// たとえば「敵の体力の変数を作る」の手順に、”このスプライトのみ”という選択肢の名前を拾って
+// 『スプライト』のカードが付いてしまう。その手順はスプライトの話ではないので邪魔になる。
+//
+// そこで次のようにしている:
+//   - **”...” で囲まれた中は見ない。** 資料ではブロック名やボタン名を必ず ”...” で書くので、
+//     ”このスプライトのみ” や ”このクローンを削除する” のような「操作の名前」を拾わなくなる。
+//     地の文で「スプライトごとに変数を持てる」と説明している所だけが残る。
+//   - **見出しに入っている用語を最優先する。** 「◯◯の変数を作る」という見出しなら、
+//     その手順は変数の話だと分かる。
+//   - 同じ用語が何か所かに出てきたら、**一番点数の高い1か所だけ**に付ける。
+//   - 1つのまとまりに付けるのは最大2件まで(カードだらけにならないように)
+//   - 手書きの [用語](wiki:用語) が既にある用語は足さない
 //   - Scratch wiki自身のページでは何もしない(用語ページが自分を指してしまうため)
-const AUTO_TERMS_PER_ASIDE = 2;
+const AUTO_TERMS_PER_BLOCK = 2;
+const SCORE_IN_HEADING = 2;
+const SCORE_IN_BODY = 1;
 
 function toPlainText(node) {
   if (node.type === 'text' || node.type === 'inlineCode') return node.value;
   if (node.type === 'html') return '';
   if (!node.children) return '';
   return node.children.map(toPlainText).join('');
+}
+
+// ”...” の中身を消す。資料ではブロック名・ボタン名・選択肢の名前をこう書くので、
+// 「操作の名前として出てきただけ」の用語を拾わないようにするため。
+// (”このスプライトのみ” から『スプライト』を拾ってしまう、というのを防ぐ)
+//
+// ただし ”コスチューム” のように、引用の中身がちょうど用語名そのものの時は残す。
+// これは操作の名前ではなく、用語そのものを指して説明している文なので拾ってよい。
+//
+// なお資料によって開き引用符が “ だったり ” だったりする(Notionから移行した回に多い)。
+// 片方だけを見ていると範囲を取り違えて、囲まれていない所まで消してしまうので、
+// どの向きの引用符も同じ区切りとして扱う。
+function stripQuoted(text, termKeys) {
+  return text.replace(/[“”"]([^“”"]*)[“”"]/g, (whole, inner) =>
+    termKeys.has(inner.trim()) ? inner : ' '
+  );
 }
 
 function remarkAutoWikiTerms() {
@@ -211,62 +236,79 @@ function remarkAutoWikiTerms() {
     });
 
     const children = tree.children;
-    const inserts = [];
 
-    for (let i = 0; i < children.length; i++) {
-      const node = children[i];
-      if (node.type !== 'html' || !/^<aside[\s>]/.test(node.value.trim())) continue;
-
-      // 対応する </aside> までがこのasideの中身
-      let end = i + 1;
-      while (
-        end < children.length &&
-        !(children[end].type === 'html' && children[end].value.includes('</aside>'))
-      ) {
-        end += 1;
+    // 見出しごとに本文をひとまとまりにする
+    const blocks = [];
+    let current = null;
+    children.forEach((node, i) => {
+      if (node.type === 'heading') {
+        current = { heading: toPlainText(node), body: '', end: i };
+        blocks.push(current);
+        return;
       }
-      if (end >= children.length) continue;
+      if (!current) return;
+      current.end = i;
+      // 見るのは地の文(asideの説明を含む)だけ。番号リストは「ボタンを押す」といった
+      // 操作の手順なので見ない。そこに出てくる用語は説明ではなく作業の対象でしかなく、
+      // 拾うと「Enemyのスプライトを選ぶ」から『スプライト』を拾うようなことが起きる。
+      if (node.type === 'paragraph') {
+        current.body += toPlainText(node) + '\n';
+      }
+    });
 
-      let text = '';
-      for (let k = i + 1; k < end; k++) text += toPlainText(children[k]) + '\n';
-
-      const hits = [];
+    // 用語ごとに「一番ふさわしいまとまり」を選ぶ
+    const termKeys = new Set(terms.map(([term]) => term));
+    const best = new Map();
+    blocks.forEach((block, bi) => {
+      const heading = stripQuoted(block.heading, termKeys);
+      const body = stripQuoted(block.body, termKeys);
       for (const [term, url] of terms) {
         if (used.has(url)) continue;
-        if (hits.some((h) => h.url === url)) continue;
-        const at = text.indexOf(term);
-        if (at < 0) continue;
-        hits.push({ at, term, url });
+        let score = 0;
+        let at = heading.indexOf(term);
+        if (at >= 0) score = SCORE_IN_HEADING;
+        else {
+          at = body.indexOf(term);
+          if (at >= 0) score = SCORE_IN_BODY;
+        }
+        if (!score) continue;
+        const previous = best.get(url);
+        // 同点なら先に出てきたまとまりを優先する
+        if (!previous || score > previous.score) best.set(url, { score, at, bi, term });
       }
-      hits.sort((a, b) => a.at - b.at);
+    });
 
-      const picked = hits.slice(0, AUTO_TERMS_PER_ASIDE);
-      if (picked.length) {
-        for (const h of picked) used.add(h.url);
+    // まとまりごとにまとめて、点数の高いものから最大2件
+    const perBlock = new Map();
+    for (const [url, info] of best) {
+      const list = perBlock.get(info.bi) ?? [];
+      list.push({ url, ...info });
+      perBlock.set(info.bi, list);
+    }
 
-        // 手順の番号リストがあれば、その後ろに置く
-        const insertAfter = children[end + 1]?.type === 'list' ? end + 1 : end;
-        inserts.push({
-          index: insertAfter + 1,
-          nodes: picked.map((h) => ({
-            type: 'paragraph',
-            children: [
-              {
-                type: 'link',
-                url: h.url,
-                // 照合した語ではなく用語ページの正式タイトルを出す
-                // (「初期化」で当たっても「初期化（しょきか）」と表示する)
-                children: [{ type: 'text', value: wikiTitleByUrl.get(h.url) ?? h.term }],
-              },
-            ],
-          })),
-        });
-      }
-      i = end;
+    const inserts = [];
+    for (const [bi, list] of perBlock) {
+      list.sort((a, b) => b.score - a.score || a.at - b.at);
+      inserts.push({
+        index: blocks[bi].end + 1,
+        nodes: list.slice(0, AUTO_TERMS_PER_BLOCK).map((hit) => ({
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              url: hit.url,
+              // 照合した語ではなく用語ページの正式タイトルを出す
+              // (「初期化」で当たっても「初期化（しょきか）」と表示する)
+              children: [{ type: 'text', value: wikiTitleByUrl.get(hit.url) ?? hit.term }],
+            },
+          ],
+        })),
+      });
     }
 
     // 後ろから入れて、前の位置がずれないようにする
-    for (const ins of inserts.reverse()) children.splice(ins.index, 0, ...ins.nodes);
+    inserts.sort((a, b) => b.index - a.index);
+    for (const ins of inserts) children.splice(ins.index, 0, ...ins.nodes);
   };
 }
 
