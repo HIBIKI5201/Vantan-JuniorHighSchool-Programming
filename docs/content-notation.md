@@ -25,9 +25,15 @@ _notion-source/                # Notionエクスポートの生データ置き�
 scripts/
 ├── migrate-from-notion.mjs    # _notion-source/ → src/content/ + public/lessons/ への変換スクリプト
 ├── new-lesson.mjs             # 新しい回の雛形を作る (npm run new-lesson)
+├── import-shots.mjs           # 撮ったスクショを命名規則に並べ替える (npm run shots)
 └── check-lessons.mjs          # 記法・スクショ・用語リンクの検査 (npm run check)
+docs/
+├── content-notation.md        # このファイル(記法のルール)
+└── writing-voice.md           # 本文の言い回し(トーン)
 .claude/
-└── skills/lesson-writer/      # 授業資料を書く時のClaude Code用スキル
+└── skills/
+    ├── lesson-writer/         # 授業回を書く時のClaude Code用スキル
+    └── wiki-term-writer/      # 用語ページを書く時のスキル
 ```
 
 ## よく使うコマンド
@@ -37,7 +43,10 @@ npm run new-lesson -- kinyo-2026-7-9 4 "タイトルとリザルトを作ろう"
 npm run check                                                        # 記法を検査する
 npm run dev                                                          # 書きながら確認(制作中の回も出る)
 npm run release                                                      # 生徒が見る画面を確認(制作中は出ない)
+npm run shots -- kinyo-2026-7-9 3                                    # 撮ったスクショを命名規則に並べ替える
 ```
+
+本文の言い回し(トーン)は [writing-voice.md](writing-voice.md) にまとめてある。
 
 Windowsでは `dev.bat` / `release.bat` をダブルクリックしても同じことができる。
 
