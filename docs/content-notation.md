@@ -20,7 +20,7 @@ public/
 └── lessons/
     └── <courseSlug>/
         └── <NN>/
-            └── imageX.png     # そのレッスンで使う画像
+            └── image-0.png    # そのレッスンで使う画像(image-0, image-1, ... と続く)
 _notion-source/                # Notionエクスポートの生データ置き場(.gitignore済み、コミットしない)
 scripts/
 ├── migrate-from-notion.mjs    # _notion-source/ → src/content/ + public/lessons/ への変換スクリプト
@@ -269,14 +269,16 @@ note: "..."                # 任意。status: partial の時にページ上部�
 ### 画像
 
 ```markdown
-![image.png](/lessons/kinyo-2026-1-3/03/image.png)
+![image.png](/lessons/kinyo-2026-1-3/03/image-0.png)
 ```
 
 - パスは必ず **`/lessons/<courseSlug>/<NN>/ファイル名`** というサイトルート相対パスにする。
   GitHub Pagesのbase path(`/Vantan-JuniorHighSchool-Programming`)は
   `astro.config.mjs` のremarkプラグインがビルド時に自動で付け足すので、**自分で書かない**。
-- ファイル名の半角スペースはハイフンに置き換える(例: `image 1.png` → `image-1.png`)。
-  これはURLにスペースが入る事故を防ぐため。
+- ファイル名は **`image-0.png` から始めて `image-1.png`, `image-2.png` … と続ける**。
+  番号なしの `image.png` は使わない(並び順が分かりにくくなるため)。
+- 半角スペースを含む名前は使わない(URLにスペースが入る事故を防ぐため)。
+  授業で撮ったスクショは `npm run shots` が自動でこの名前に並べ替えてくれる。
 - 画像の実体は `public/lessons/<courseSlug>/<NN>/` に置く。
 - **他のコース/レッスンの画像を再利用することもできる**(例: `scratch-wiki`の解説ページが
   `suiyo-2026-7-9`のレッスンのスクリーンショットを流用している)。その場合は
@@ -294,10 +296,10 @@ note: "..."                # 任意。status: partial の時にページ上部�
 点線の枠に差し替える。壊れた画像アイコンにはならない。
 
 ```markdown
-![image.png](/lessons/kinyo-2026-7-9/03/image.png)   ← 実体が無い間はプレースホルダー表示
+![image.png](/lessons/kinyo-2026-7-9/03/image-0.png)   ← 実体が無い間はプレースホルダー表示
 ```
 
-あとから `public/lessons/kinyo-2026-7-9/03/image.png` を置けば、
+あとから `public/lessons/kinyo-2026-7-9/03/image-0.png` を置けば、
 **次のビルドから自動的にその画像が表示される**(Markdownは書き換えなくてよい)。
 
 この状態の間はレッスンの`status`を`partial`にして、
@@ -415,7 +417,7 @@ https://scratch.mit.edu/projects/xxxxxxx/
 
 ## 最初の手順の見出し
 
-![image.png](/lessons/kinyo-2026-7-9/03/image.png)
+![image.png](/lessons/kinyo-2026-7-9/03/image-0.png)
 
 <aside>
 💡

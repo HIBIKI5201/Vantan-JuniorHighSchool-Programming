@@ -95,7 +95,7 @@ npm run shots -- <courseSlug> <回数>             # 実行
 ```
 
 「スクリーンショット 2026-08-21 005102.png」のような名前を、撮った順に
-`image.png` / `image-1.png` / … へ自動で並べ替える。
+`image-0.png` / `image-1.png` / … へ自動で並べ替える。
 並び順が違ったら、そのフォルダの中でファイル名を入れ替えれば直る。
 
 スクショと授業日と見本URLが埋まったら `status` を `complete` にして公開する。
@@ -120,7 +120,7 @@ npm run shots -- <courseSlug> <回数>             # 実行
 ```markdown
 ### 敵の体力の変数を作る
 
-![image.png](/lessons/kinyo-2026-7-9/03/image.png)
+![image.png](/lessons/kinyo-2026-7-9/03/image-0.png)
 
 <aside>
 💡
@@ -157,10 +157,10 @@ npm run shots -- <courseSlug> <回数>             # 実行
 先生があとから撮って貼るので、**本文には最初から画像リンクを書いておく**。
 
 ```markdown
-![image.png](/lessons/<courseSlug>/<NN>/image.png)
+![image.png](/lessons/<courseSlug>/<NN>/image-0.png)
 ```
 
-- ファイル名は `image.png` → `image-1.png` → `image-2.png` … の順
+- ファイル名は `image-0.png` → `image-1.png` → `image-2.png` … の順。**番号なしは使わない**
 - パスは `/lessons/...` から書く(GitHub Pagesのbaseは自動で付くので書かない)
 - **実体が無い間はビルド時に「スクリーンショット準備中」の枠に自動で差し替わる**ので、
   壊れた画像にはならない。`public/lessons/<courseSlug>/<NN>/` に置けば次のビルドから出る

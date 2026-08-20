@@ -7,13 +7,13 @@
 //   npm run shots -- kinyo-2026-7-9 3             # 実際にリネームする
 //
 // やること:
-//   public/lessons/<courseSlug>/<NN>/ の中の、image*.png 以外の画像ファイルを
-//   撮った順(ファイル名の日時 → 更新日時)に image.png / image-1.png / image-2.png … へ改名する。
+//   public/lessons/<courseSlug>/<NN>/ の中の、image-*.png 以外の画像ファイルを
+//   撮った順(ファイル名の日時 → 更新日時)に image-0.png / image-1.png / image-2.png … へ改名する。
 //
 // Windowsのスクリーンショットは「スクリーンショット 2026-08-21 005102.png」のように
 // 空白と日本語が入っていて、そのままではURLに使えないため。
 //
-// 既にある image*.png は動かさない。その続きの番号から埋めていく。
+// 既にある image-*.png は動かさない。空いている番号から埋めていく。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -45,7 +45,7 @@ const already = files.filter((f) => /^image(-\d+)?\.(png|jpe?g|gif|webp)$/i.test
 const incoming = files.filter((f) => !already.includes(f));
 
 if (!incoming.length) {
-  console.log(`並べ替えるファイルはありません (image*.png が ${already.length}枚 あります)`);
+  console.log(`並べ替えるファイルはありません (image-*.png が ${already.length}枚 あります)`);
   process.exit(0);
 }
 
@@ -74,7 +74,7 @@ const nextSlot = () => {
 const plan = incoming.map((name) => {
   const n = nextSlot();
   const ext = path.extname(name).toLowerCase();
-  return { from: name, to: n === 0 ? `image${ext}` : `image-${n}${ext}` };
+  return { from: name, to: `image-${n}${ext}` };
 });
 
 console.log(`${path.relative(REPO_ROOT, dir)} の ${plan.length}枚を並べ替えます`);
