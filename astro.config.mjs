@@ -31,6 +31,7 @@ function remarkPrefixInternalUrls() {
 // 全レッスンのリンクを直す羽目になるので、用語名から番号を引くのはビルド時にやる。
 // 対応する用語ページが見つからない場合はビルド時に警告を出し、リンクを外して文字だけ残す。
 let wikiTermMapCache = null;
+const wikiTitleByUrl = new Map();
 
 function getWikiTermMap() {
   if (wikiTermMapCache) return wikiTermMapCache;
@@ -45,7 +46,9 @@ function getWikiTermMap() {
       if (!title) continue;
       // "初期化（しょきか）" のように読みガナ付きのタイトルでも "初期化" で引けるようにする
       const keys = new Set([title, title.replace(/（.*?）/g, '').trim()]);
-      for (const key of keys) if (key) map.set(key, `/courses/scratch-wiki/${nn}/`);
+      const url = `/courses/scratch-wiki/${nn}/`;
+      wikiTitleByUrl.set(url, title);
+      for (const key of keys) if (key) map.set(key, url);
     }
   }
   wikiTermMapCache = map;
@@ -61,6 +64,12 @@ function remarkResolveWikiTerms() {
       const resolved = map.get(term);
       if (resolved) {
         node.url = resolved;
+        // リンクの文字も用語ページの正式タイトルに揃える
+        // (「初期化」と書いても「初期化（しょきか）」と表示される)
+        const title = wikiTitleByUrl.get(resolved);
+        if (title && node.children?.length === 1 && node.children[0].type === "text") {
+          node.children[0].value = title;
+        }
         return;
       }
       console.warn(
@@ -84,6 +93,9 @@ function remarkSyncInternalLinkTitles() {
       const m = node.url.match(/^\/courses\/([a-z0-9-]+)\/(\d{2})\/$/);
       if (!m) return;
       const [, courseSlug, nn] = m;
+      // 用語リンクの文字は remarkResolveWikiTerms / remarkAutoWikiTerms 側で
+      // 正式タイトルに揃えているので、ここでは触らない
+      if (courseSlug === "scratch-wiki") return;
       const lessonFile = path.join(LESSONS_DIR, courseSlug, `${nn}.md`);
       if (!fs.existsSync(lessonFile)) return;
       const raw = fs.readFileSync(lessonFile, 'utf8');
@@ -164,6 +176,117 @@ function remarkWrapAsideIcon() {
   };
 }
 
+
+// asideの説明文にScratch wikiの用語が出てきたら、その手順の後ろに用語カードを自動で足す。
+// 毎回 [クローン](wiki:クローン) と手で書かなくても済むようにするため。
+//
+// ルール:
+//   - asideの中の本文だけを見る(手順の番号リストや地の文は見ない)
+//   - 1つのasideから足すのは最大2件まで(カードだらけにならないように)
+//   - 同じ用語は1ページにつき1回だけ(手書きのリンクが既にある用語も足さない)
+//   - カードはasideの直後ではなく、その後ろの番号リスト(手順)の下に置く
+//     (説明と手順が分断されないようにするため)
+//   - Scratch wiki自身のページでは何もしない(用語ページが自分を指してしまうため)
+const AUTO_TERMS_PER_ASIDE = 2;
+
+function toPlainText(node) {
+  if (node.type === 'text' || node.type === 'inlineCode') return node.value;
+  if (node.type === 'html') return '';
+  if (!node.children) return '';
+  return node.children.map(toPlainText).join('');
+}
+
+function remarkAutoWikiTerms() {
+  return (tree, file) => {
+    const filePath = (file.path ?? '').split(path.sep).join('/');
+    if (filePath.includes('/lessons/scratch-wiki/')) return;
+
+    // 長い用語名から先に照合して、短い名前に食われないようにする
+    const terms = [...getWikiTermMap().entries()].sort((a, b) => b[0].length - a[0].length);
+
+    // すでにページ内にあるリンク(手書き分)と同じ用語は足さない
+    const used = new Set();
+    visit(tree, 'link', (node) => {
+      if (/^\/courses\/scratch-wiki\/\d{2}\/$/.test(node.url ?? '')) used.add(node.url);
+    });
+
+    const children = tree.children;
+    const inserts = [];
+
+    for (let i = 0; i < children.length; i++) {
+      const node = children[i];
+      if (node.type !== 'html' || !/^<aside[\s>]/.test(node.value.trim())) continue;
+
+      // 対応する </aside> までがこのasideの中身
+      let end = i + 1;
+      while (
+        end < children.length &&
+        !(children[end].type === 'html' && children[end].value.includes('</aside>'))
+      ) {
+        end += 1;
+      }
+      if (end >= children.length) continue;
+
+      let text = '';
+      for (let k = i + 1; k < end; k++) text += toPlainText(children[k]) + '\n';
+
+      const hits = [];
+      for (const [term, url] of terms) {
+        if (used.has(url)) continue;
+        if (hits.some((h) => h.url === url)) continue;
+        const at = text.indexOf(term);
+        if (at < 0) continue;
+        hits.push({ at, term, url });
+      }
+      hits.sort((a, b) => a.at - b.at);
+
+      const picked = hits.slice(0, AUTO_TERMS_PER_ASIDE);
+      if (picked.length) {
+        for (const h of picked) used.add(h.url);        fs.appendFileSync(path.join(REPO_ROOT,'auto-debug.log'), JSON.stringify({picked:picked.map(x=>x.url),titles:picked.map(x=>wikiTitleByUrl.get(x.url)),size:wikiTitleByUrl.size})+String.fromCharCode(10));
+
+        // 手順の番号リストがあれば、その後ろに置く
+        const insertAfter = children[end + 1]?.type === 'list' ? end + 1 : end;
+        inserts.push({
+          index: insertAfter + 1,
+          nodes: picked.map((h) => ({
+            type: 'paragraph',
+            children: [
+              {
+                type: 'link',
+                url: h.url,
+                // 照合した語ではなく用語ページの正式タイトルを出す
+                // (「初期化」で当たっても「初期化（しょきか）」と表示する)
+                children: [{ type: 'text', value: wikiTitleByUrl.get(h.url) ?? h.term }],
+              },
+            ],
+          })),
+        });
+      }
+      i = end;
+    }
+
+    // 後ろから入れて、前の位置がずれないようにする
+    for (const ins of inserts.reverse()) children.splice(ins.index, 0, ...ins.nodes);
+  };
+}
+
+// 外部サイトへのリンクは新しいタブで開く。
+// 資料を読んでいる途中でページを離れてしまわないようにするため。
+// (サイト内のリンクは同じタブのまま)
+function remarkExternalLinksNewTab() {
+  return (tree) => {
+    visit(tree, 'link', (node) => {
+      if (!/^https?:\/\//i.test(node.url ?? '')) return;
+      node.data = node.data ?? {};
+      node.data.hProperties = {
+        ...(node.data.hProperties ?? {}),
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      };
+    });
+  };
+}
+
 export default defineConfig({
   site: 'https://hibiki5201.github.io',
   base: BASE,
@@ -173,14 +296,17 @@ export default defineConfig({
   },
   markdown: {
     // 順番が大事:
-    // wiki:用語 を実パスに直す → リンク文字をタイトルと同期 → 画像の実体チェック →
-    // 裸URLのラベル付け → baseの付与 → asideアイコンの整形
+    // wiki:用語 を実パスに直す → asideから用語カードを自動追加 → リンク文字をタイトルと同期 →
+    // 画像の実体チェック → 裸URLのラベル付け → baseの付与 → 外部リンクを別タブに → asideアイコンの整形
+    // (用語カードの文字も揃えたいので、自動追加はタイトル同期より前に置くこと)
     remarkPlugins: [
       remarkResolveWikiTerms,
+      remarkAutoWikiTerms,
       remarkSyncInternalLinkTitles,
       remarkMissingImagePlaceholder,
       remarkFriendlyLinkText,
       remarkPrefixInternalUrls,
+      remarkExternalLinksNewTab,
       remarkWrapAsideIcon,
     ],
   },

@@ -10,3 +10,6 @@ docs/Info/
 # Claude Codeのローカル状態(共有しない)
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+
+# デバッグ用の一時ログ
+*-debug.log
