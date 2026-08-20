@@ -31,6 +31,7 @@ function remarkPrefixInternalUrls() {
 // 全レッスンのリンクを直す羽目になるので、用語名から番号を引くのはビルド時にやる。
 // 対応する用語ページが見つからない場合はビルド時に警告を出し、リンクを外して文字だけ残す。
 let wikiTermMapCache = null;
+const wikiTitleByUrl = new Map();
 
 function getWikiTermMap() {
   if (wikiTermMapCache) return wikiTermMapCache;
@@ -45,7 +46,9 @@ function getWikiTermMap() {
       if (!title) continue;
       // "初期化（しょきか）" のように読みガナ付きのタイトルでも "初期化" で引けるようにする
       const keys = new Set([title, title.replace(/（.*?）/g, '').trim()]);
-      for (const key of keys) if (key) map.set(key, `/courses/scratch-wiki/${nn}/`);
+      const url = `/courses/scratch-wiki/${nn}/`;
+      wikiTitleByUrl.set(url, title);
+      for (const key of keys) if (key) map.set(key, url);
     }
   }
   wikiTermMapCache = map;
@@ -61,6 +64,12 @@ function remarkResolveWikiTerms() {
       const resolved = map.get(term);
       if (resolved) {
         node.url = resolved;
+        // リンクの文字も用語ページの正式タイトルに揃える
+        // (「初期化」と書いても「初期化（しょきか）」と表示される)
+        const title = wikiTitleByUrl.get(resolved);
+        if (title && node.children?.length === 1 && node.children[0].type === "text") {
+          node.children[0].value = title;
+        }
         return;
       }
       console.warn(
@@ -84,6 +93,9 @@ function remarkSyncInternalLinkTitles() {
       const m = node.url.match(/^\/courses\/([a-z0-9-]+)\/(\d{2})\/$/);
       if (!m) return;
       const [, courseSlug, nn] = m;
+      // 用語リンクの文字は remarkResolveWikiTerms / remarkAutoWikiTerms 側で
+      // 正式タイトルに揃えているので、ここでは触らない
+      if (courseSlug === "scratch-wiki") return;
       const lessonFile = path.join(LESSONS_DIR, courseSlug, `${nn}.md`);
       if (!fs.existsSync(lessonFile)) return;
       const raw = fs.readFileSync(lessonFile, 'utf8');
@@ -164,6 +176,159 @@ function remarkWrapAsideIcon() {
   };
 }
 
+
+// 本文にScratch wikiの用語が出てきたら、その見出しのまとまりの最後に用語カードを自動で足す。
+// 毎回 [クローン](wiki:クローン) と手で書かなくても済むようにするため。
+//
+// 「どこに付けるか」が肝になる。ただ最初に見つかった所に付けると、
+// たとえば「敵の体力の変数を作る」の手順に、”このスプライトのみ”という選択肢の名前を拾って
+// 『スプライト』のカードが付いてしまう。その手順はスプライトの話ではないので邪魔になる。
+//
+// そこで次のようにしている:
+//   - **”...” で囲まれた中は見ない。** 資料ではブロック名やボタン名を必ず ”...” で書くので、
+//     ”このスプライトのみ” や ”このクローンを削除する” のような「操作の名前」を拾わなくなる。
+//     地の文で「スプライトごとに変数を持てる」と説明している所だけが残る。
+//   - **見出しに入っている用語を最優先する。** 「◯◯の変数を作る」という見出しなら、
+//     その手順は変数の話だと分かる。
+//   - 同じ用語が何か所かに出てきたら、**一番点数の高い1か所だけ**に付ける。
+//   - 1つのまとまりに付けるのは最大2件まで(カードだらけにならないように)
+//   - 手書きの [用語](wiki:用語) が既にある用語は足さない
+//   - Scratch wiki自身のページでは何もしない(用語ページが自分を指してしまうため)
+const AUTO_TERMS_PER_BLOCK = 2;
+const SCORE_IN_HEADING = 2;
+const SCORE_IN_BODY = 1;
+
+function toPlainText(node) {
+  if (node.type === 'text' || node.type === 'inlineCode') return node.value;
+  if (node.type === 'html') return '';
+  if (!node.children) return '';
+  return node.children.map(toPlainText).join('');
+}
+
+// ”...” の中身を消す。資料ではブロック名・ボタン名・選択肢の名前をこう書くので、
+// 「操作の名前として出てきただけ」の用語を拾わないようにするため。
+// (”このスプライトのみ” から『スプライト』を拾ってしまう、というのを防ぐ)
+//
+// ただし ”コスチューム” のように、引用の中身がちょうど用語名そのものの時は残す。
+// これは操作の名前ではなく、用語そのものを指して説明している文なので拾ってよい。
+//
+// なお資料によって開き引用符が “ だったり ” だったりする(Notionから移行した回に多い)。
+// 片方だけを見ていると範囲を取り違えて、囲まれていない所まで消してしまうので、
+// どの向きの引用符も同じ区切りとして扱う。
+function stripQuoted(text, termKeys) {
+  return text.replace(/[“”"]([^“”"]*)[“”"]/g, (whole, inner) =>
+    termKeys.has(inner.trim()) ? inner : ' '
+  );
+}
+
+function remarkAutoWikiTerms() {
+  return (tree, file) => {
+    const filePath = (file.path ?? '').split(path.sep).join('/');
+    if (filePath.includes('/lessons/scratch-wiki/')) return;
+
+    // 長い用語名から先に照合して、短い名前に食われないようにする
+    const terms = [...getWikiTermMap().entries()].sort((a, b) => b[0].length - a[0].length);
+
+    // すでにページ内にあるリンク(手書き分)と同じ用語は足さない
+    const used = new Set();
+    visit(tree, 'link', (node) => {
+      if (/^\/courses\/scratch-wiki\/\d{2}\/$/.test(node.url ?? '')) used.add(node.url);
+    });
+
+    const children = tree.children;
+
+    // 見出しごとに本文をひとまとまりにする
+    const blocks = [];
+    let current = null;
+    children.forEach((node, i) => {
+      if (node.type === 'heading') {
+        current = { heading: toPlainText(node), body: '', end: i };
+        blocks.push(current);
+        return;
+      }
+      if (!current) return;
+      current.end = i;
+      // 見るのは地の文(asideの説明を含む)だけ。番号リストは「ボタンを押す」といった
+      // 操作の手順なので見ない。そこに出てくる用語は説明ではなく作業の対象でしかなく、
+      // 拾うと「Enemyのスプライトを選ぶ」から『スプライト』を拾うようなことが起きる。
+      if (node.type === 'paragraph') {
+        current.body += toPlainText(node) + '\n';
+      }
+    });
+
+    // 用語ごとに「一番ふさわしいまとまり」を選ぶ
+    const termKeys = new Set(terms.map(([term]) => term));
+    const best = new Map();
+    blocks.forEach((block, bi) => {
+      const heading = stripQuoted(block.heading, termKeys);
+      const body = stripQuoted(block.body, termKeys);
+      for (const [term, url] of terms) {
+        if (used.has(url)) continue;
+        let score = 0;
+        let at = heading.indexOf(term);
+        if (at >= 0) score = SCORE_IN_HEADING;
+        else {
+          at = body.indexOf(term);
+          if (at >= 0) score = SCORE_IN_BODY;
+        }
+        if (!score) continue;
+        const previous = best.get(url);
+        // 同点なら先に出てきたまとまりを優先する
+        if (!previous || score > previous.score) best.set(url, { score, at, bi, term });
+      }
+    });
+
+    // まとまりごとにまとめて、点数の高いものから最大2件
+    const perBlock = new Map();
+    for (const [url, info] of best) {
+      const list = perBlock.get(info.bi) ?? [];
+      list.push({ url, ...info });
+      perBlock.set(info.bi, list);
+    }
+
+    const inserts = [];
+    for (const [bi, list] of perBlock) {
+      list.sort((a, b) => b.score - a.score || a.at - b.at);
+      inserts.push({
+        index: blocks[bi].end + 1,
+        nodes: list.slice(0, AUTO_TERMS_PER_BLOCK).map((hit) => ({
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              url: hit.url,
+              // 照合した語ではなく用語ページの正式タイトルを出す
+              // (「初期化」で当たっても「初期化（しょきか）」と表示する)
+              children: [{ type: 'text', value: wikiTitleByUrl.get(hit.url) ?? hit.term }],
+            },
+          ],
+        })),
+      });
+    }
+
+    // 後ろから入れて、前の位置がずれないようにする
+    inserts.sort((a, b) => b.index - a.index);
+    for (const ins of inserts) children.splice(ins.index, 0, ...ins.nodes);
+  };
+}
+
+// 外部サイトへのリンクは新しいタブで開く。
+// 資料を読んでいる途中でページを離れてしまわないようにするため。
+// (サイト内のリンクは同じタブのまま)
+function remarkExternalLinksNewTab() {
+  return (tree) => {
+    visit(tree, 'link', (node) => {
+      if (!/^https?:\/\//i.test(node.url ?? '')) return;
+      node.data = node.data ?? {};
+      node.data.hProperties = {
+        ...(node.data.hProperties ?? {}),
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      };
+    });
+  };
+}
+
 export default defineConfig({
   site: 'https://hibiki5201.github.io',
   base: BASE,
@@ -173,14 +338,17 @@ export default defineConfig({
   },
   markdown: {
     // 順番が大事:
-    // wiki:用語 を実パスに直す → リンク文字をタイトルと同期 → 画像の実体チェック →
-    // 裸URLのラベル付け → baseの付与 → asideアイコンの整形
+    // wiki:用語 を実パスに直す → asideから用語カードを自動追加 → リンク文字をタイトルと同期 →
+    // 画像の実体チェック → 裸URLのラベル付け → baseの付与 → 外部リンクを別タブに → asideアイコンの整形
+    // (用語カードの文字も揃えたいので、自動追加はタイトル同期より前に置くこと)
     remarkPlugins: [
       remarkResolveWikiTerms,
+      remarkAutoWikiTerms,
       remarkSyncInternalLinkTitles,
       remarkMissingImagePlaceholder,
       remarkFriendlyLinkText,
       remarkPrefixInternalUrls,
+      remarkExternalLinksNewTab,
       remarkWrapAsideIcon,
     ],
   },

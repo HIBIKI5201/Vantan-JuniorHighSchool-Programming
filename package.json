@@ -9,7 +9,10 @@
     "astro": "astro",
     "new-lesson": "node scripts/new-lesson.mjs",
     "check": "node scripts/check-lessons.mjs",
-    "release": "astro build && astro preview --port 4322"
+    "release": "astro build && astro preview --port 4322",
+    "shots": "node scripts/import-shots.mjs",
+    "prebuild": "node scripts/sync-term-cache.mjs",
+    "predev": "node scripts/sync-term-cache.mjs"
   },
   "dependencies": {
     "astro": "^5.17.1",

@@ -54,10 +54,10 @@ if (fs.existsSync(lessonPath)) {
 const today = new Date();
 const createdAt = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
 
-// 画像は image.png, image-1.png, image-2.png ... という並びにする(既存の資料と同じ命名)。
+// 画像は image-0.png, image-1.png, image-2.png ... という並びにする(既存の資料と同じ命名)。
 let imageIndex = 0;
 const nextImage = () => {
-  const name = imageIndex === 0 ? 'image.png' : `image-${imageIndex}.png`;
+  const name = `image-${imageIndex}.png`;
   imageIndex += 1;
   return `![image.png](/lessons/${courseSlug}/${nn}/${name})`;
 };
@@ -134,7 +134,7 @@ fs.mkdirSync(imageDir, { recursive: true });
 
 console.log(`作成しました: ${path.relative(REPO_ROOT, lessonPath)}`);
 console.log(`スクショの置き場所: ${path.relative(REPO_ROOT, imageDir)}`);
-console.log(`スクショの想定枚数: ${stepCount}枚 (image.png 〜 image-${stepCount - 1}.png)`);
+console.log(`スクショの想定枚数: ${stepCount}枚 (image-0.png 〜 image-${stepCount - 1}.png)`);
 console.log('');
 console.log('次にやること:');
 console.log('  1. 本文を書く(用語リンクは [クローン](wiki:クローン) の形で単独の段落に置く)');

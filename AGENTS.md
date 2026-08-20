@@ -6,8 +6,12 @@
 ## このリポジトリで作業する前に
 
 - 授業資料(Markdown)の書き方のルールは **[docs/content-notation.md](docs/content-notation.md)** に
-  まとまっている。レッスンのfrontmatter・画像パス・`<aside>`コールアウトの書き方とトーンは
+  まとまっている。レッスンのfrontmatter・画像パス・`<aside>`コールアウトの書き方は
   必ずそれに従うこと。
+- 本文の言い回し(トーン)は **[docs/writing-voice.md](docs/writing-voice.md)** に、
+  既存資料を数えて抜き出してある。新しく書いた文章はこれと突き合わせること。
+- Claude Codeで書く場合は `.claude/skills/` のスキルを使う。
+  授業回は `lesson-writer`、用語ページは `wiki-term-writer`。
 - Notionから新しいコースを取り込む/更新する時は **[scripts/migrate-from-notion.mjs](scripts/migrate-from-notion.mjs)**
   を使う(使い方はスクリプト冒頭のコメントと `docs/content-notation.md` の最後を参照)。
 
@@ -15,10 +19,15 @@
 
 ```bash
 npm install
-npm run dev      # http://localhost:4321/Vantan-JuniorHighSchool-Programming/ で確認(base pathが付く)
-npm run build    # ./dist に静的ビルド
-npm run preview  # ビルド結果をローカルで確認
+npm run dev       # 書きながら確認(制作中の回も出る)  :4321
+npm run release   # 生徒が見る画面を確認(制作中は出ない)  :4322
+npm run check     # 記法・用語リンク・スクショの検査
+npm run new-lesson -- <courseSlug> <回数> "<タイトル>"   # 回の雛形を作る
+npm run shots -- <courseSlug> <回数>                    # 撮ったスクショを命名規則に並べ替える
+npm run build     # ./dist に静的ビルド
 ```
+
+Windowsでは `dev.bat` / `release.bat` をダブルクリックしても同じことができる。
 
 `main` にpushすると `.github/workflows/deploy.yaml` が自動でビルドし、GitHub Pages
 (`https://hibiki5201.github.io/Vantan-JuniorHighSchool-Programming/`) に公開される。
