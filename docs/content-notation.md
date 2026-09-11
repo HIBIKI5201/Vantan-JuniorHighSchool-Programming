@@ -31,15 +31,27 @@ scripts/
 docs/
 ├── content-notation.md        # このファイル(記法のルール)
 └── writing-voice.md           # 本文の言い回し(トーン)
+editor/                        # 授業資料エディタの画面 (npm run write で開く。公開サイトには入らない)
 .claude/
 └── skills/
     ├── lesson-writer/         # 授業回を書く時のClaude Code用スキル
     └── wiki-term-writer/      # 用語ページを書く時のスキル
 ```
 
+## エディタで書く場合
+
+Markdownの記法を覚えなくても書けるように、ブロック方式のエディタを用意してある
+(`write.bat` をダブルクリック、またはコマンドで `npm run write`)。
+このドキュメントのルール(frontmatter・画像のパスと名前・`<aside>`・`wiki:` の用語リンク)は
+エディタの中に埋め込んであるので、選ぶだけで正しい形になる。
+
+手でMarkdownを書く場合や、エディタが扱っていない書き方(表など)を触る場合は、以下のルールに従う。
+エディタは知らない書き方をそのまま保持するので、手書きの部分がエディタで壊れることはない。
+
 ## よく使うコマンド
 
 ```bash
+npm run write                                                        # エディタを開く
 npm run new-lesson -- kinyo-2026-7-9 4 "タイトルとリザルトを作ろう"   # 雛形を作る
 npm run check                                                        # 記法を検査する
 npm run dev                                                          # 書きながら確認(制作中の回も出る)

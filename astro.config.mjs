@@ -1,6 +1,7 @@
 // Astroプロジェクト全体の設定ファイル。
 import { defineConfig } from 'astro/config';
 import { visit } from 'unist-util-visit';
+import { editorServer } from './scripts/editor-server.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -330,6 +331,9 @@ function remarkExternalLinksNewTab() {
 }
 
 export default defineConfig({
+  // 授業資料を書くためのエディタ(http://localhost:4321/editor)。
+  // npm run dev の時だけ動き、公開サイトのビルドには入らない。
+  integrations: [editorServer()],
   site: 'https://hibiki5201.github.io',
   base: BASE,
   trailingSlash: 'always',
