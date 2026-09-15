@@ -3,6 +3,9 @@
 バンタン中等部のプログラミング授業(Scratch)資料を公開するAstro製の静的サイト。
 元々はNotionで管理していた資料を、この静的サイトに移行している途中。
 
+講師向けの入口(セットアップ・書き方の流れ)は **[README.md](README.md)** にある。
+このファイルは開発者・AIエージェント向け。
+
 ## このリポジトリで作業する前に
 
 - 授業資料(Markdown)の書き方のルールは **[docs/content-notation.md](docs/content-notation.md)** に
@@ -19,6 +22,7 @@
 
 ```bash
 npm install
+npm run write     # 授業資料エディタを開く            :4321
 npm run dev       # 書きながら確認(制作中の回も出る)  :4321
 npm run release   # 生徒が見る画面を確認(制作中は出ない)  :4322
 npm run check     # 記法・用語リンク・スクショの検査
@@ -27,10 +31,36 @@ npm run shots -- <courseSlug> <回数>                    # 撮ったスクシ�
 npm run build     # ./dist に静的ビルド
 ```
 
-Windowsでは `dev.bat` / `release.bat` をダブルクリックしても同じことができる。
+Windowsでは `write.bat` / `dev.bat` / `release.bat` をダブルクリックしても同じことができる。
 
 `main` にpushすると `.github/workflows/deploy.yaml` が自動でビルドし、GitHub Pages
 (`https://hibiki5201.github.io/Vantan-JuniorHighSchool-Programming/`) に公開される。
+
+## 授業資料エディタ (`npm run write`)
+
+講師が複数人になったため、Markdownの記法を覚えなくても資料を書けるブロックエディタを
+`http://localhost:4321/Vantan-JuniorHighSchool-Programming/editor/` に置いてある。
+
+- `editor/` … 画面側。`md-blocks.js` がMarkdown ⇄ ブロックの変換、`editor.js` が表示と操作。
+- `scripts/editor-server.mjs` … 読み書きのAPI。Viteのミドルウェアとして差し込んでいるので、
+  **devサーバーの時しか動かず、`npm run build` の成果物には入らない**。
+- `src/middleware.ts` … エディタのHTMLだけはAstro側のミドルウェアで返している。
+  Astroがdevサーバーで「HTMLを求めるリクエスト」を先に処理してしまい、
+  Viteミドルウェアまで届かずAstroの404になるため。
+  この都合で、エディタのURLは **base込み**(`/Vantan-JuniorHighSchool-Programming/editor/`)
+  でないと開けない。
+
+元に戻す(Ctrl+Z)は、本文とfrontmatterの状態をまるごとJSONにしたスナップショット方式。
+contenteditableの標準undoはブロックを描き直した時点で効かなくなり、
+「ブロックを消した」「種類を変えた」は最初から対象外なので、自前で持っている。
+表示のためだけの値(スクショの実体があるかの`exists`)をスナップショットに混ぜると、
+画像の読み込み完了が「変更」と判定されてredoの履歴が消えるので、除外している。
+
+エディタで一番大事なのは **開いて保存しただけで内容が変わらないこと**。
+`md-blocks.js` は、docs/content-notation.md に載っている記法だけをブロックとして扱い、
+それ以外(表・生HTML・入れ子リストなど)は `raw` ブロックとして行をそのまま持ち回す。
+記法を足す時は、既存の全レッスンを「読み込んで書き出す」テストで
+差分が出ないことを必ず確認すること(空行の詰め方や用語リンクの表記まで元のまま戻す作りになっている)。
 
 ## 技術構成
 
