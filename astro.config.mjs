@@ -5,6 +5,9 @@ import { editorServer } from './scripts/editor-server.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
 
 const REPO_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const LESSONS_DIR = path.join(REPO_ROOT, 'src', 'content', 'lessons');
@@ -78,6 +81,67 @@ function remarkResolveWikiTerms() {
       );
       node.url = '';
       node.data = { ...node.data, hName: 'span' };
+    });
+  };
+}
+
+// レッスンの「覚えること」は、Scratch wikiの用語ページに書いてある説明と
+// 内容が重複しがちで、手でコピーすると片方だけ直して食い違う事故が起きる。
+// Notionの「同期ブロック」と同じ発想で、wikiページの"## 概要"の中身を
+// レッスン側から埋め込み参照できるようにする。中身の実体はwikiページ側だけに置き、
+// レッスンには `> [概要](wiki-summary:用語名)` という予約された形の引用だけを書く。
+// ビルドのたびにwikiページの現在の内容を読み直すので、wiki側を直せば
+// 参照しているレッスン全部に自動で反映される。
+const summaryParser = unified().use(remarkParse).use(remarkGfm);
+let wikiSummaryCache = new Map();
+
+// term(用語名)に対応するwikiページの"## 概要"見出しの直後から、
+// 次の見出しが出るまでのノード列を返す(概要そのものの見出しは含めない)。
+function getWikiSummaryNodes(term) {
+  if (wikiSummaryCache.has(term)) return wikiSummaryCache.get(term);
+  const url = getWikiTermMap().get(term);
+  const nn = url?.match(/\/scratch-wiki\/(\d{2})\//)?.[1];
+  const filePath = nn ? path.join(LESSONS_DIR, 'scratch-wiki', `${nn}.md`) : null;
+  if (!filePath || !fs.existsSync(filePath)) {
+    wikiSummaryCache.set(term, null);
+    return null;
+  }
+  const raw = fs.readFileSync(filePath, 'utf8').replace(/^---[\s\S]*?---\r?\n/, '');
+  const tree = summaryParser.parse(raw);
+  let collecting = false;
+  const nodes = [];
+  for (const node of tree.children) {
+    if (node.type === 'heading') {
+      if (collecting) break;
+      if (node.depth === 2 && toPlainText(node) === '概要') collecting = true;
+      continue;
+    }
+    if (collecting) nodes.push(node);
+  }
+  const result = nodes.length ? nodes : null;
+  wikiSummaryCache.set(term, result);
+  return result;
+}
+
+function remarkEmbedWikiSummary() {
+  return (tree, file) => {
+    const filePath = (file.path ?? '').split(path.sep).join('/');
+    if (filePath.includes('/lessons/scratch-wiki/')) return;
+    visit(tree, 'blockquote', (node) => {
+      if (node.children.length !== 1) return;
+      const p = node.children[0];
+      if (p.type !== 'paragraph' || p.children.length !== 1) return;
+      const link = p.children[0];
+      if (link.type !== 'link' || !link.url?.startsWith('wiki-summary:')) return;
+      const term = link.url.slice('wiki-summary:'.length).trim();
+      const nodes = getWikiSummaryNodes(term);
+      if (!nodes) {
+        console.warn(
+          `[wiki概要] "${term}" の"## 概要"がScratch wikiに見つかりません: ${file.path ?? ''}`
+        );
+        return;
+      }
+      node.children = nodes;
     });
   };
 }
@@ -342,10 +406,13 @@ export default defineConfig({
   },
   markdown: {
     // 順番が大事:
-    // wiki:用語 を実パスに直す → asideから用語カードを自動追加 → リンク文字をタイトルと同期 →
-    // 画像の実体チェック → 裸URLのラベル付け → baseの付与 → 外部リンクを別タブに → asideアイコンの整形
-    // (用語カードの文字も揃えたいので、自動追加はタイトル同期より前に置くこと)
+    // wikiの概要を埋め込む → wiki:用語 を実パスに直す → asideから用語カードを自動追加 →
+    // リンク文字をタイトルと同期 → 画像の実体チェック → 裸URLのラベル付け → baseの付与 →
+    // 外部リンクを別タブに → asideアイコンの整形
+    // (埋め込んだ概要の中にwiki:リンクが混じっていても後続で解決できるよう、埋め込みを一番先に置く。
+    // 用語カードの文字も揃えたいので、自動追加はタイトル同期より前に置くこと)
     remarkPlugins: [
+      remarkEmbedWikiSummary,
       remarkResolveWikiTerms,
       remarkAutoWikiTerms,
       remarkSyncInternalLinkTitles,
