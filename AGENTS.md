@@ -15,6 +15,7 @@
   既存資料を数えて抜き出してある。新しく書いた文章はこれと突き合わせること。
 - Claude Codeで書く場合は `.claude/skills/` のスキルを使う。
   授業回は `lesson-writer`、用語ページは `wiki-term-writer`。
+  mainにPRしてマージする(公開する)時は `deploy`。
 - Notionから新しいコースを取り込む/更新する時は **[scripts/migrate-from-notion.mjs](scripts/migrate-from-notion.mjs)**
   を使う(使い方はスクリプト冒頭のコメントと `docs/content-notation.md` の最後を参照)。
 
