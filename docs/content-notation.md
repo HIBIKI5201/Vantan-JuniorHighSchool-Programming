@@ -34,8 +34,9 @@ docs/
 editor/                        # 授業資料エディタの画面 (npm run write で開く。公開サイトには入らない)
 .claude/
 └── skills/
-    ├── lesson-writer/         # 授業回を書く時のClaude Code用スキル
-    └── wiki-term-writer/      # 用語ページを書く時のスキル
+    ├── vjp-lesson-writer/     # 授業回を書く時のClaude Code用スキル
+    ├── vjp-wiki-term-writer/  # 用語ページを書く時のスキル
+    └── vjp-deploy/            # mainにPRしてマージ(公開)する時のスキル
 ```
 
 ## エディタで書く場合
@@ -399,7 +400,7 @@ npm run new-lesson -- <courseSlug> <回数> "<タイトル>" [手順の数]
 ```
 
 レッスンのMarkdownと、スクショ置き場の `public/lessons/<courseSlug>/<NN>/` が同時に作られる。
-Claude Codeで書く場合は `.claude/skills/lesson-writer/` のスキルに、
+Claude Codeで書く場合は `.claude/skills/vjp-lesson-writer/` のスキルに、
 内容の決め方からasideのトーンまでまとまっている。
 
 手で書く場合は次のテンプレートから始める。
