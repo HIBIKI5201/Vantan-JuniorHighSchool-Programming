@@ -1,5 +1,5 @@
 ---
-name: deploy
+name: vjp-deploy
 description: devブランチの変更をmainにPRしてマージし、GitHub Pagesに公開する時に使う。「mainにマージして」「デプロイして」「公開して」「PR出してマージして」のような依頼で使う。コミット→devへpush→PR作成→マージ→デプロイの完了確認までを、いつも同じ手順で行うためのもの。
 ---
 

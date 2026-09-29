@@ -1,5 +1,5 @@
 ---
-name: wiki-term-writer
+name: vjp-wiki-term-writer
 description: バンタン中等部のScratch授業資料で使う用語集(Scratch wiki)のページを作る・直す時に使う。「wikiに用語を追加して」「クローンの説明ページを作って」「用語集を増やして」のような依頼で使う。用語ページのfrontmatter・書き方・レッスン側からのリンクのされ方を、既存の用語ページと揃えるためのもの。
 ---
 

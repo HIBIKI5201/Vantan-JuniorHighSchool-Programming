@@ -14,8 +14,9 @@
 - 本文の言い回し(トーン)は **[docs/writing-voice.md](docs/writing-voice.md)** に、
   既存資料を数えて抜き出してある。新しく書いた文章はこれと突き合わせること。
 - Claude Codeで書く場合は `.claude/skills/` のスキルを使う。
-  授業回は `lesson-writer`、用語ページは `wiki-term-writer`。
-  mainにPRしてマージする(公開する)時は `deploy`。
+  授業回は `vjp-lesson-writer`、用語ページは `vjp-wiki-term-writer`、
+  FireShotに増えるスクショを待ち受けて資料に取り込み続ける時は `vjp-shot-watch`。
+  mainにPRしてマージする(公開する)時は `vjp-deploy`。
 - Notionから新しいコースを取り込む/更新する時は **[scripts/migrate-from-notion.mjs](scripts/migrate-from-notion.mjs)**
   を使う(使い方はスクリプト冒頭のコメントと `docs/content-notation.md` の最後を参照)。
 
@@ -29,6 +30,7 @@ npm run release   # 生徒が見る画面を確認(制作中は出ない)  :4322
 npm run check     # 記法・用語リンク・スクショの検査
 npm run new-lesson -- <courseSlug> <回数> "<タイトル>"   # 回の雛形を作る
 npm run shots -- <courseSlug> <回数>                    # 撮ったスクショを命名規則に並べ替える
+npm run mark -- <画像> <x,y,w,h>                        # コード画面のスクショに赤枠を付ける
 npm run build     # ./dist に静的ビルド
 ```
 
