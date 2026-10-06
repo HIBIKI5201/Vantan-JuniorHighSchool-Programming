@@ -13,6 +13,7 @@ import {
   toFullMarkdown,
   inlineToHtml,
   htmlToInline,
+  YOUTUBE_RE,
 } from './md-blocks.js';
 
 const API = '/__editor/api/';
@@ -964,19 +965,38 @@ function renderUrl(block) {
   const updateKind = () => {
     if (/scratch\.mit\.edu\/projects\//.test(input.value)) kind.textContent = '「先生の見本プロジェクト」と表示されます';
     else if (/(forms\.gle|docs\.google\.com\/forms)/.test(input.value)) kind.textContent = '「今日のひとことフォーム」と表示されます';
+    else if (YOUTUBE_RE.test(input.value)) kind.textContent = 'YouTubeの動画になります';
     else kind.textContent = 'そのままリンクになります';
   };
+  // YouTubeの時だけ「サムネで出す」を選べる
+  const thumbLabel = document.createElement('label');
+  thumbLabel.className = 'url-thumb';
+  const thumb = document.createElement('input');
+  thumb.type = 'checkbox';
+  thumb.checked = !!block.thumb;
+  thumbLabel.append(thumb, 'サムネで出す');
+  const updateThumb = () => {
+    thumbLabel.hidden = !YOUTUBE_RE.test(input.value);
+  };
   updateKind();
+  updateThumb();
 
   input.addEventListener('input', () => {
     block.url = input.value.trim();
     updateKind();
+    updateThumb();
     setDirty(true);
     recordHistory(false);
+  });
+  thumb.addEventListener('change', () => {
+    block.thumb = thumb.checked;
+    setDirty(true);
+    recordHistory(true);
   });
 
   box.appendChild(input);
   box.appendChild(kind);
+  box.appendChild(thumbLabel);
   return box;
 }
 

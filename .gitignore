@@ -17,3 +17,6 @@ docs/Info/
 
 # エディタが保存する前に残す1世代前のバックアップ(共有しない)
 .editor-backup/
+
+# 授業資料の検索用索引(npm run index / npm run q が毎回Markdownから作り直す)
+.index/
