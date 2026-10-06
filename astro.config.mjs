@@ -377,6 +377,66 @@ function remarkAutoWikiTerms() {
   };
 }
 
+// YouTubeの動画は2通りで置ける。
+//   https://www.youtube.com/watch?v=xxx         … 裸URLの1行 → 「YouTubeで見る」のリンクカード(CSS側)
+//   ![YouTube](https://www.youtube.com/watch?v=xxx) … サムネ画像付きのカード
+// サムネは i.ytimg.com の公開サムネイルを使う(埋め込みプレイヤーは重いので使わない)。
+// 動画のタイトルは直前の見出しを使う(自己紹介ページのように「### 動画名」+URLの形で書かれているため)。
+const YOUTUBE_ID_RE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([\w-]{11})/;
+
+function remarkYoutubeThumbnail() {
+  return (tree) => {
+    let lastHeading = '';
+    visit(tree, (node) => {
+      if (node.type === 'heading') {
+        lastHeading = (node.children ?? []).map((c) => c.value ?? '').join('');
+        return;
+      }
+      if (node.type !== 'paragraph' || node.children?.length !== 1) return;
+      const img = node.children[0];
+      if (img.type !== 'image' || img.alt !== 'YouTube') return;
+      const id = img.url?.match(YOUTUBE_ID_RE)?.[1];
+      if (!id) return;
+      const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      const url = esc(img.url);
+      const title = esc(lastHeading || 'YouTubeの動画');
+      node.type = 'html';
+      node.value =
+        `<a class="yt-thumb" href="${url}" target="_blank" rel="noopener noreferrer">` +
+        `<span class="yt-thumb-img"><img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="${title}" loading="lazy" /><span class="yt-thumb-play">▶</span></span>` +
+        `<span class="yt-thumb-title">${title}</span>` +
+        '</a>';
+      delete node.children;
+    });
+  };
+}
+
+// 裸URLの1行(リンクカード)には、リンク先サイトのアイコン(favicon)を付ける。
+// どこへ飛ぶリンクなのかを、文字を読まなくても見分けられるようにするため。
+// 見本プロジェクト・フォーム・YouTubeはCSS側で専用のアイコンを出しているので除外する。
+const FAVICON_SKIP_RE = /^https?:\/\/([^/]*\.)?(scratch\.mit\.edu|forms\.gle|docs\.google\.com|youtube\.com|youtu\.be)\//;
+
+function remarkLinkFavicon() {
+  return (tree) => {
+    visit(tree, 'paragraph', (para) => {
+      if (para.children?.length !== 1) return;
+      const node = para.children[0];
+      if (node.type !== 'link' || !/^https?:\/\//.test(node.url ?? '')) return;
+      if (FAVICON_SKIP_RE.test(node.url)) return;
+      let host;
+      try {
+        host = new URL(node.url).hostname;
+      } catch {
+        return;
+      }
+      node.children.unshift({
+        type: 'html',
+        value: `<img class="link-favicon" src="https://www.google.com/s2/favicons?domain=${host}&sz=64" alt="" loading="lazy" />`,
+      });
+    });
+  };
+}
+
 // 外部サイトへのリンクは新しいタブで開く。
 // 資料を読んでいる途中でページを離れてしまわないようにするため。
 // (サイト内のリンクは同じタブのまま)
@@ -407,8 +467,8 @@ export default defineConfig({
   markdown: {
     // 順番が大事:
     // wikiの概要を埋め込む → wiki:用語 を実パスに直す → asideから用語カードを自動追加 →
-    // リンク文字をタイトルと同期 → 画像の実体チェック → 裸URLのラベル付け → baseの付与 →
-    // 外部リンクを別タブに → asideアイコンの整形
+    // リンク文字をタイトルと同期 → YouTubeのサムネ化 → 画像の実体チェック → 裸URLのラベル付け → baseの付与 →
+    // 外部リンクにfavicon → 外部リンクを別タブに → asideアイコンの整形
     // (埋め込んだ概要の中にwiki:リンクが混じっていても後続で解決できるよう、埋め込みを一番先に置く。
     // 用語カードの文字も揃えたいので、自動追加はタイトル同期より前に置くこと)
     remarkPlugins: [
@@ -416,9 +476,11 @@ export default defineConfig({
       remarkResolveWikiTerms,
       remarkAutoWikiTerms,
       remarkSyncInternalLinkTitles,
+      remarkYoutubeThumbnail,
       remarkMissingImagePlaceholder,
       remarkFriendlyLinkText,
       remarkPrefixInternalUrls,
+      remarkLinkFavicon,
       remarkExternalLinksNewTab,
       remarkWrapAsideIcon,
     ],

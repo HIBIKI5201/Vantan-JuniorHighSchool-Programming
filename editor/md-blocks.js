@@ -17,7 +17,8 @@
 //   image    { url, alt }                    スクショ
 //   aside    { icon, items: [{kind,text}] }  <aside>💡 ...</aside> のコールアウト
 //   wiki     { term }                        [クローン](wiki:クローン) の用語カード
-//   url      { url }                         見本プロジェクト/フォームの裸URL
+//   url      { url, thumb }                  見本プロジェクト/フォーム/YouTubeの裸URL
+//                                            (thumb: YouTubeをサムネで出す。![YouTube](URL) と書く)
 //   raw      { text }                        上のどれでもない部分(そのまま保存)
 
 // ------------------------------------------------------------------ 判定用
@@ -29,6 +30,7 @@ const NUMBER_RE = /^\d+\.\s+(.*)$/;
 const WIKI_ONLY_RE = /^\[([^\]]*)\]\(wiki:([^)]+)\)$/;
 const BARE_URL_RE = /^https?:\/\/\S+$/;
 const FENCE_RE = /^(```|~~~)/;
+export const YOUTUBE_RE = /^https?:\/\/(www\.|m\.)?(youtube\.com\/watch\?|youtu\.be\/)/;
 
 let uid = 0;
 const nextId = () => `b${++uid}`;
@@ -167,6 +169,12 @@ export function markdownToBlocks(body) {
     }
 
     const image = trimmed.match(IMAGE_ONLY_RE);
+    // ![YouTube](URL) は画像ではなく、YouTubeのサムネ表示
+    if (image && image[1] === 'YouTube' && YOUTUBE_RE.test(image[2])) {
+      pushBlock(makeBlock('url', { url: image[2], thumb: true }));
+      i += 1;
+      continue;
+    }
     if (image) {
       pushBlock(makeBlock('image', { alt: image[1], url: image[2] }));
       i += 1;
@@ -362,6 +370,7 @@ function blockToMarkdown(block, numberCounter) {
       return `[${block.label?.trim() || term}](wiki:${term})`;
     }
     case 'url':
+      if (block.thumb && YOUTUBE_RE.test(block.url.trim())) return `![YouTube](${block.url.trim()})`;
       return block.url.trim();
     case 'aside':
       return asideToMarkdown(block);

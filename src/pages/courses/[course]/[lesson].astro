@@ -55,8 +55,32 @@ const showToc = tocItems.length >= 3;
 	</article>
 	{hasHub && (
 		<a class="hub-return-button" href={`${baseUrl}courses/${course!.slug}/`}>
-			← {course!.data.title}に戻る
+			<span data-back-label>← {course!.data.title}に戻る</span>
 		</a>
+	)}
+	{hasHub && (
+		<script is:inline>
+			// ハブ形式のコース(体験授業など)のページは、他のコースからリンクで飛んでくることがある
+			// (例: 各期の#0から「先生の自己紹介」)。その時に「体験授業に戻る」だと元の場所に戻れないので、
+			// サイト内から来た時だけ「戻る」ボタンにして、ブラウザの戻ると同じ動きにする。
+			// URLを直接開いた時など、戻り先が無い時は今まで通りハブのページへのリンクのまま。
+			(() => {
+				let from;
+				try {
+					from = document.referrer && new URL(document.referrer);
+				} catch {}
+				if (!from || from.origin !== location.origin || from.pathname === location.pathname) return;
+				if (history.length < 2) return;
+				document.querySelectorAll(".hub-return-button, .back-link a").forEach((a) => {
+					const label = a.querySelector("[data-back-label]") ?? a;
+					label.textContent = "← 戻る";
+					a.addEventListener("click", (e) => {
+						e.preventDefault();
+						history.back();
+					});
+				});
+			})();
+		</script>
 	)}
 	{showToc && (
 		<nav class="toc" aria-label="もくじ">

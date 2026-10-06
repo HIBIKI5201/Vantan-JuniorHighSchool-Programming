@@ -28,6 +28,7 @@ npm run write     # 授業資料エディタを開く            :4321
 npm run dev       # 書きながら確認(制作中の回も出る)  :4321
 npm run release   # 生徒が見る画面を確認(制作中は出ない)  :4322
 npm run check     # 記法・用語リンク・スクショの検査
+npm run q         # 授業資料の索引(SQLite)を検索。引数なしで用意してある検索の一覧
 npm run new-lesson -- <courseSlug> <回数> "<タイトル>"   # 回の雛形を作る
 npm run shots -- <courseSlug> <回数>                    # 撮ったスクショを命名規則に並べ替える
 npm run mark -- <画像> <x,y,w,h>                        # コード画面のスクショに赤枠を付ける
@@ -64,6 +65,19 @@ contenteditableの標準undoはブロックを描き直した時点で効かな�
 それ以外(表・生HTML・入れ子リストなど)は `raw` ブロックとして行をそのまま持ち回す。
 記法を足す時は、既存の全レッスンを「読み込んで書き出す」テストで
 差分が出ないことを必ず確認すること(空行の詰め方や用語リンクの表記まで元のまま戻す作りになっている)。
+
+## 授業資料の索引 (`npm run q`)
+
+**Markdownが元データ(製本)で、SQLiteはそこから作る検索用の索引。** 書き込みは必ずMarkdownに対して行い、
+索引には書き込まない(書いてもMarkdownには戻らない)。
+
+- `scripts/build-index.mjs` … Markdownを読んで `.index/lessons.db` を作り直す(`npm run index`)。
+  テーブル定義はファイル内の `SCHEMA`。`.index/` は `.gitignore` 済み。
+- `scripts/query-lessons.mjs` … `npm run q -- <検索の名前> [引数]` か `npm run q -- "SELECT ..."`。
+  実行のたびに索引を作り直すので、常に最新のMarkdownが対象になる。よく使う検索は `QUERIES` に足す。
+- Node標準の `node:sqlite` を使っているので追加の依存はない(Node 22.13以上)。
+
+「クローンを初めて教えた回は?」「スクショ待ちの枠は?」のような、回を跨いだ質問はまずこれで調べる。
 
 ## 技術構成
 

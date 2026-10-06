@@ -387,6 +387,8 @@ body {
   font-family: ui-monospace, monospace;
 }
 .url-kind { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.url-thumb { font-size: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.url-thumb[hidden] { display: none; }
 
 /* そのまま保存される部分 */
 .block-raw .raw-box {
