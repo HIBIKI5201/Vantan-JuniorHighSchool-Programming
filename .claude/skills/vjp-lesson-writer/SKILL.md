@@ -67,6 +67,16 @@ npm run new-lesson -- <courseSlug> <回数> "<タイトル>" [手順の数]
 
 https://forms.gle/2pMUF3bXP67FiUdA8
 
+# 覚えること
+## 新しく使う用語
+> [概要](wiki-summary:用語)
+
+---
+
+この回で何に使うか
+
+[用語](wiki:用語)
+
 # やってみよう
 ## 大きなまとまり
 ### 手順の見出し
@@ -231,6 +241,13 @@ npm run mark -- public/lessons/<courseSlug>/<NN>/image-N.png <x,y,w,h> [<x,y,w,h
 - **書きかけの回は `status: draft` にする。** 公開サイトには出ず、`npm run dev` でだけ見える
   (生徒に未完成の資料を見せないため)。スクショと授業日と見本URLが埋まったら
   `complete`(画像がまだなら `partial`)に変えて公開する
+
+### 覚えること(wikiの概要の埋め込み)
+
+その回で新しく使う用語は「wikiの概要 → `---` → この回での使い方 → 用語カード」の順に書く。
+書き方の詳細は docs/content-notation.md の「「覚えること」でwikiの概要を見せる」。
+埋め込まれるのは、wikiページの `<!-- wiki-summary -->` 〜 `<!-- /wiki-summary -->` で囲んだ範囲。
+レッスンに出す内容を変えたい時は、レッスンではなくwikiページ側の目印の位置を動かす。
 
 ### 用語リンク(Scratch wiki)
 

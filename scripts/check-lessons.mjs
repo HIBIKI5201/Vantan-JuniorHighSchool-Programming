@@ -5,6 +5,7 @@
 // 見るところ:
 //   [エラー]  frontmatterの不足 / course名やorderとファイル名の食い違い
 //   [エラー]  wiki:用語 が Scratch wiki のページに解決できない
+//   [エラー]  Scratch wikiのページに <!-- wiki-summary --> の目印が無い / 開き閉じが合わない
 //   [エラー]  status: complete なのにスクショが足りない
 //   [警告]    スクショ待ちの枚数(status: partial / draft の間は正常なので警告どまり)
 //   [警告]    用語リンクのページ番号直書き / 「◯◯とは：」の前置き
@@ -49,6 +50,7 @@ function parseFrontmatter(raw) {
 // ---- Scratch wiki の用語一覧を作る ----------------------------------------
 
 const wikiTerms = new Set();
+const wikiSummaryTerms = new Set(); // 埋め込みの目印があるページの用語
 const wikiDir = path.join(LESSONS_DIR, 'scratch-wiki');
 if (fs.existsSync(wikiDir)) {
   for (const file of fs.readdirSync(wikiDir)) {
@@ -59,6 +61,18 @@ if (fs.existsSync(wikiDir)) {
     wikiTerms.add(title);
     const stripped = title.replace(/（.*?）/g, '').trim();
     if (stripped) wikiTerms.add(stripped);
+    // 「覚えること」に埋め込む範囲の目印。全ページに置く(無いと埋め込めない)
+    const opens = raw.match(/^<!--\s*wiki-summary\s*-->\s*$/gm)?.length ?? 0;
+    const closes = raw.match(/^<!--\s*\/wiki-summary\s*-->\s*$/gm)?.length ?? 0;
+    const wikiRel = rel(path.join(wikiDir, file));
+    if (opens === 0) {
+      err(wikiRel, 0, '<!-- wiki-summary --> 〜 <!-- /wiki-summary --> の目印がありません(「覚えること」に埋め込む範囲)');
+    } else if (opens !== closes) {
+      err(wikiRel, 0, `wiki-summary の目印の開き(${opens})と閉じ(${closes})の数が合っていません`);
+    } else {
+      wikiSummaryTerms.add(title);
+      if (stripped) wikiSummaryTerms.add(stripped);
+    }
   }
 }
 
@@ -143,6 +157,11 @@ for (const courseSlug of fs.readdirSync(LESSONS_DIR)) {
       for (const m of line.matchAll(/\[([^\]]*)\]\(wiki:([^)]+)\)/g)) {
         if (!wikiTerms.has(m[2].trim())) {
           err(fileRel, lineNo, `wiki:${m[2]} に対応するScratch wikiのページがありません`);
+        }
+      }
+      for (const m of line.matchAll(/\]\(wiki-summary:([^)]+)\)/g)) {
+        if (!wikiSummaryTerms.has(m[1].trim())) {
+          err(fileRel, lineNo, `wiki-summary:${m[1]} のScratch wikiのページに埋め込みの目印がありません`);
         }
       }
       if (/\]\(\/courses\/scratch-wiki\/\d{2}\/\)/.test(line)) {
