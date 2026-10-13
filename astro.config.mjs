@@ -87,16 +87,28 @@ function remarkResolveWikiTerms() {
 
 // レッスンの「覚えること」は、Scratch wikiの用語ページに書いてある説明と
 // 内容が重複しがちで、手でコピーすると片方だけ直して食い違う事故が起きる。
-// Notionの「同期ブロック」と同じ発想で、wikiページの"## 概要"の中身を
-// レッスン側から埋め込み参照できるようにする。中身の実体はwikiページ側だけに置き、
-// レッスンには `> [概要](wiki-summary:用語名)` という予約された形の引用だけを書く。
-// ビルドのたびにwikiページの現在の内容を読み直すので、wiki側を直せば
-// 参照しているレッスン全部に自動で反映される。
+// Notionの「同期ブロック」と同じ発想で、wikiページの一部をレッスン側から埋め込み参照できるようにする。
+// 中身の実体はwikiページ側だけに置き、レッスンには `> [概要](wiki-summary:用語名)` という
+// 予約された形の引用だけを書く。ビルドのたびにwikiページの現在の内容を読み直すので、
+// wiki側を直せば参照しているレッスン全部に自動で反映される。
+//
+// どこを埋め込むかは、wikiページの中の目に見えない目印(HTMLコメント)で決める。
+//
+//   <!-- wiki-summary -->
+//   (ここが埋め込まれる)
+//   <!-- /wiki-summary -->
+//
+// 見出しで範囲を決めると、wikiページに「概要」という見出しを並べる必要があり、
+// 「定義の文 + Scratchでの使い方」のように見出しをまたぐ範囲を選べないため。
+// 目印は1ページに何組置いてもよく、上から順につなげて埋め込む。
 const summaryParser = unified().use(remarkParse).use(remarkGfm);
 let wikiSummaryCache = new Map();
 
-// term(用語名)に対応するwikiページの"## 概要"見出しの直後から、
-// 次の見出しが出るまでのノード列を返す(概要そのものの見出しは含めない)。
+const SUMMARY_OPEN = /^<!--\s*wiki-summary\s*-->$/;
+const SUMMARY_CLOSE = /^<!--\s*\/wiki-summary\s*-->$/;
+
+// term(用語名)に対応するwikiページの、目印で囲まれたノード列を返す。
+// 範囲の中の見出しは、レッスンの見出しの段を崩さないよう太字の段落にして埋め込む。
 function getWikiSummaryNodes(term) {
   if (wikiSummaryCache.has(term)) return wikiSummaryCache.get(term);
   const url = getWikiTermMap().get(term);
@@ -111,12 +123,20 @@ function getWikiSummaryNodes(term) {
   let collecting = false;
   const nodes = [];
   for (const node of tree.children) {
-    if (node.type === 'heading') {
-      if (collecting) break;
-      if (node.depth === 2 && toPlainText(node) === '概要') collecting = true;
+    if (node.type === 'html' && SUMMARY_OPEN.test(node.value.trim())) {
+      collecting = true;
       continue;
     }
-    if (collecting) nodes.push(node);
+    if (node.type === 'html' && SUMMARY_CLOSE.test(node.value.trim())) {
+      collecting = false;
+      continue;
+    }
+    if (!collecting) continue;
+    if (node.type === 'heading') {
+      nodes.push({ type: 'paragraph', children: [{ type: 'strong', children: node.children }] });
+      continue;
+    }
+    nodes.push(node);
   }
   const result = nodes.length ? nodes : null;
   wikiSummaryCache.set(term, result);
@@ -137,11 +157,27 @@ function remarkEmbedWikiSummary() {
       const nodes = getWikiSummaryNodes(term);
       if (!nodes) {
         console.warn(
-          `[wiki概要] "${term}" の"## 概要"がScratch wikiに見つかりません: ${file.path ?? ''}`
+          `[wiki概要] "${term}" のwikiページに <!-- wiki-summary --> の目印がありません: ${file.path ?? ''}`
         );
         return;
       }
       node.children = nodes;
+      // 「wikiの概要」だと分かる見た目にするための目印(Layout.astroのblockquote.wiki-summary)
+      node.data = { ...node.data, hProperties: { className: ['wiki-summary'] } };
+    });
+  };
+}
+
+// 用語リンクを1行だけの段落に置いた時は「用語カード」として大きく表示する。
+// CSSの :only-child は文字(テキストノード)を数えないので、
+// 「詳しくは[変数](wiki:変数)を見てみてください。」のような文中のリンクまでカードになり、
+// 文が途中で切れてしまう。リンク以外に文字が無い段落だけに印を付けて、CSSはその印を見る。
+function remarkMarkLinkCards() {
+  return (tree) => {
+    visit(tree, 'paragraph', (node) => {
+      const rest = node.children.filter((c) => !(c.type === 'text' && !c.value.trim()));
+      if (rest.length !== 1 || rest[0].type !== 'link') return;
+      node.data = { ...node.data, hProperties: { ...node.data?.hProperties, className: ['link-card'] } };
     });
   };
 }
@@ -483,6 +519,7 @@ export default defineConfig({
       remarkLinkFavicon,
       remarkExternalLinksNewTab,
       remarkWrapAsideIcon,
+      remarkMarkLinkCards,
     ],
   },
 });

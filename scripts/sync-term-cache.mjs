@@ -8,6 +8,8 @@
 //   そのため「用語を足したのにカードが出ない」ということが起きる。
 //
 //   そこで用語の一覧をハッシュにして覚えておき、変わっていたらキャッシュを消す。
+//   「覚えること」に埋め込むwikiの範囲(<!-- wiki-summary --> 〜 <!-- /wiki-summary -->)も
+//   同じ理由でレッスン側に反映されないので、その範囲の中身もハッシュに含める。
 //   npm run build / npm run dev の前に自動で走る(package.jsonのprebuild/predev)。
 
 import fs from 'node:fs';
@@ -31,7 +33,10 @@ const titles = fs
   .map((f) => {
     const raw = fs.readFileSync(path.join(WIKI_DIR, f), 'utf8');
     const title = raw.match(/^title:\s*"(.*)"\s*$/m)?.[1] ?? '';
-    return `${f}:${title}`;
+    const summary = [...raw.matchAll(/<!--\s*wiki-summary\s*-->([\s\S]*?)<!--\s*\/wiki-summary\s*-->/g)]
+      .map((m) => m[1].replace(/\r\n/g, '\n'))
+      .join('\n');
+    return `${f}:${title}\n${summary}`;
   })
   .sort();
 
@@ -51,6 +56,6 @@ fs.mkdirSync(path.dirname(HASH_FILE), { recursive: true });
 fs.writeFileSync(HASH_FILE, hash);
 
 console.log(
-  `用語が${previous ? '変わりました' : '登録されました'}(${titles.length}件)。` +
+  `用語か埋め込む概要が${previous ? '変わりました' : '登録されました'}(${titles.length}件)。` +
     (cleared ? 'キャッシュを消したので、全レッスンを作り直します。' : '')
 );

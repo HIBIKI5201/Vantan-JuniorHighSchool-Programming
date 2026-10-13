@@ -340,6 +340,22 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		margin: 2.5rem 0;
 	}
 
+	/* ---------- 「覚えること」に埋め込んだScratch wikiの概要 ---------- */
+	/* `> [概要](wiki-summary:用語)` がビルド時にwikiページの"## 概要"に置き換わる(astro.config.mjs)。
+	   その下に `---` を引いてこの回での使い方を書き、最後に用語カードを置く。 */
+
+	article blockquote.wiki-summary {
+		margin: 1.2rem 0;
+		padding: 0.4rem 1.2rem;
+		background: var(--color-surface-2);
+		border-left: 4px solid var(--color-accent);
+		border-radius: var(--radius-md);
+	}
+
+	article blockquote.wiki-summary + hr {
+		margin: 1.4rem 0;
+	}
+
 	/* ---------- images ---------- */
 
 	img {
@@ -759,11 +775,11 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	   `[クローン](wiki:クローン)` を1行だけの段落として置く書き方を標準にしている
 	   (「クローンとは：」のような前置きの文字は書かない)。 */
 
-	article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) {
+	article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) {
 		margin: 1.5rem 0;
 	}
 
-	article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) > a {
+	article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) > a {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
@@ -780,7 +796,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 	}
 
-	article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) > a:hover {
+	article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) > a:hover {
 		background: var(--color-surface);
 		color: var(--color-accent-ink);
 		transform: translateY(-1px);
@@ -788,7 +804,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		border-color: var(--color-accent);
 	}
 
-	article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) > a::before {
+	article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) > a::before {
 		content: "📖";
 		display: inline-flex;
 		align-items: center;
@@ -801,7 +817,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 		flex-shrink: 0;
 	}
 
-	article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) > a::after {
+	article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) > a::after {
 		content: "用語をおさらい →";
 		margin-left: auto;
 		font-size: 0.72rem;
@@ -811,7 +827,7 @@ if (!baseUrl.endsWith("/")) baseUrl += "/";
 	}
 
 	@media (max-width: 480px) {
-		article p:has(> a[href*="/courses/scratch-wiki/"]:only-child) > a::after {
+		article p.link-card:has(> a[href*="/courses/scratch-wiki/"]) > a::after {
 			display: none;
 		}
 	}
