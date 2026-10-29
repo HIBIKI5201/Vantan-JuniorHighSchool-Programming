@@ -10,6 +10,9 @@
 //   そこで用語の一覧をハッシュにして覚えておき、変わっていたらキャッシュを消す。
 //   「覚えること」に埋め込むwikiの範囲(<!-- wiki-summary --> 〜 <!-- /wiki-summary -->)も
 //   同じ理由でレッスン側に反映されないので、その範囲の中身もハッシュに含める。
+//   スクショも同じで、実体が無い画像は「準備中」の枠に差し替えて書き出すので、
+//   あとから public/lessons/ に置いてもMarkdownが同じだと枠のまま残る。
+//   なので、置いてあるスクショの一覧もハッシュに含める。
 //   npm run build / npm run dev の前に自動で走る(package.jsonのprebuild/predev)。
 
 import fs from 'node:fs';
@@ -19,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const WIKI_DIR = path.join(REPO_ROOT, 'src', 'content', 'lessons', 'scratch-wiki');
+const SHOTS_DIR = path.join(REPO_ROOT, 'public', 'lessons');
 const HASH_FILE = path.join(REPO_ROOT, 'node_modules', '.wiki-terms-hash');
 const CACHES = [
   path.join(REPO_ROOT, 'node_modules', '.astro'),
@@ -40,7 +44,21 @@ const titles = fs
   })
   .sort();
 
-const hash = crypto.createHash('sha1').update(titles.join('\n')).digest('hex');
+// public/lessons/<courseSlug>/<NN>/ に置いてあるスクショの一覧
+const shots = fs.existsSync(SHOTS_DIR)
+  ? fs
+      .readdirSync(SHOTS_DIR, { recursive: true })
+      .map((f) => String(f).replace(/\\/g, '/'))
+      .filter((f) => /\.(png|jpe?g|gif|webp)$/i.test(f))
+      .sort()
+  : [];
+
+const hash = crypto
+  .createHash('sha1')
+  .update(titles.join('\n'))
+  .update('\n--shots--\n')
+  .update(shots.join('\n'))
+  .digest('hex');
 const previous = fs.existsSync(HASH_FILE) ? fs.readFileSync(HASH_FILE, 'utf8').trim() : '';
 
 if (hash === previous) process.exit(0);
@@ -56,6 +74,7 @@ fs.mkdirSync(path.dirname(HASH_FILE), { recursive: true });
 fs.writeFileSync(HASH_FILE, hash);
 
 console.log(
-  `用語か埋め込む概要が${previous ? '変わりました' : '登録されました'}(${titles.length}件)。` +
+  `用語・埋め込む概要・スクショのどれかが${previous ? '変わりました' : '登録されました'}` +
+    `(用語${titles.length}件 / スクショ${shots.length}枚)。` +
     (cleared ? 'キャッシュを消したので、全レッスンを作り直します。' : '')
 );
