@@ -27,7 +27,7 @@ function lessonCountFor(slug: string) {
 }
 
 // 体験授業・Scratch wikiは特定の期間に属さないので、「その他」として一番下に分ける。
-const OTHER_SLUGS = new Set(["taiken-jugyo", "scratch-wiki"]);
+const OTHER_SLUGS = new Set(["taiken-jugyo", "tokubetsu-jugyo", "scratch-wiki"]);
 const periodCourses = allCourses.filter((c) => !OTHER_SLUGS.has(c.slug));
 const otherCourses = allCourses.filter((c) => OTHER_SLUGS.has(c.slug)).sort((a, b) => b.data.order - a.data.order);
 
